@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NetBroker Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#dashboard" aria-label="Ir para o dashboard">
+          <span class="brand-mark">NB</span>
+          <span>
+            <strong>NetBroker</strong>
+            <small>Layered + Broker</small>
+          </span>
+        </a>
+
+        <nav class="nav" aria-label="Navegacao principal">
+          <a class="nav-link active" href="#dashboard" data-view="dashboard">Dashboard</a>
+          <a class="nav-link" href="#inventory" data-view="inventory">Inventario</a>
+          <a class="nav-link" href="#alarms" data-view="alarms">Alarmes</a>
+          <a class="nav-link" href="#automation" data-view="automation">Automacao</a>
+          <a class="nav-link" href="#architecture" data-view="architecture">Arquitetura</a>
+          <a class="nav-link" href="#security" data-view="security">Seguranca</a>
+        </nav>
+
+        <section class="side-panel">
+          <span class="label">Broker</span>
+          <strong id="brokerState">RabbitMQ cluster ativo</strong>
+          <div class="broker-meter" aria-hidden="true">
+            <span style="width: 72%"></span>
+          </div>
+          <small><span id="queueDepth">2.416</span> mensagens em fila</small>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Plataforma de gerenciamento centralizado multivendor</p>
+            <h1 id="viewTitle">Visao operacional</h1>
+          </div>
+          <div class="top-actions">
+            <div class="search">
+              <span aria-hidden="true">/</span>
+              <input id="globalSearch" type="search" placeholder="Buscar dispositivo, site ou fabricante" />
+            </div>
+            <button class="icon-button" id="simulateTick" type="button" title="Simular telemetria">R</button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboard">
+          <div class="kpi-grid">
+            <article class="kpi">
+              <span>Dispositivos</span>
+              <strong id="kpiDevices">0</strong>
+              <small>equipamentos gerenciados</small>
+            </article>
+            <article class="kpi">
+              <span>Disponibilidade</span>
+              <strong id="kpiAvailability">0%</strong>
+              <small>media dos sites ativos</small>
+            </article>
+            <article class="kpi warn">
+              <span>Alarmes criticos</span>
+              <strong id="kpiCritical">0</strong>
+              <small>exigem acao do NOC</small>
+            </article>
+            <article class="kpi">
+              <span>MTTR</span>
+              <strong>18 min</strong>
+              <small>reduzido por automacao</small>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel topology-panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Mapa logico</span>
+                  <h2>Sites, fabricantes e adaptadores</h2>
+                </div>
+                <button class="ghost-button" data-open-view="architecture" type="button">Ver arquitetura</button>
+              </div>
+              <div class="topology" id="topology"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Eventos recentes</span>
+                  <h2>Fluxo assíncrono</h2>
+                </div>
+              </div>
+              <div class="event-stream" id="eventStream"></div>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="label">Observabilidade</span>
+                <h2>Saude da plataforma</h2>
+              </div>
+            </div>
+            <div class="health-grid">
+              <div class="health-card">
+                <span>API Gateway</span>
+                <strong>42 ms</strong>
+                <div class="spark"><i style="height: 42%"></i><i style="height: 35%"></i><i style="height: 55%"></i><i style="height: 31%"></i><i style="height: 38%"></i><i style="height: 27%"></i></div>
+              </div>
+              <div class="health-card">
+                <span>Device Service</span>
+                <strong>99.94%</strong>
+                <div class="spark"><i style="height: 68%"></i><i style="height: 72%"></i><i style="height: 65%"></i><i style="height: 80%"></i><i style="height: 74%"></i><i style="height: 78%"></i></div>
+              </div>
+              <div class="health-card">
+                <span>Mensageria</span>
+                <strong>860 msg/min</strong>
+                <div class="spark"><i style="height: 24%"></i><i style="height: 38%"></i><i style="height: 62%"></i><i style="height: 59%"></i><i style="height: 81%"></i><i style="height: 70%"></i></div>
+              </div>
+              <div class="health-card">
+                <span>OpenSearch</span>
+                <strong>1.2M logs</strong>
+                <div class="spark"><i style="height: 54%"></i><i style="height: 52%"></i><i style="height: 48%"></i><i style="height: 66%"></i><i style="height: 57%"></i><i style="height: 61%"></i></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="inventory">
+          <div class="toolbar">
+            <div class="segmented" role="tablist" aria-label="Filtro por fabricante">
+              <button class="active" data-vendor="Todos" type="button">Todos</button>
+              <button data-vendor="Cisco" type="button">Cisco</button>
+              <button data-vendor="Fortinet" type="button">Fortinet</button>
+              <button data-vendor="Aruba" type="button">Aruba</button>
+              <button data-vendor="Juniper" type="button">Juniper</button>
+              <button data-vendor="Mikrotik" type="button">Mikrotik</button>
+            </div>
+            <button class="primary-button" id="discoverDevices" type="button">Descobrir rede</button>
+          </div>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="label">Modelo canonico</span>
+                <h2>Inventario de dispositivos</h2>
+              </div>
+              <span class="pill" id="inventoryCount">0 itens</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Hostname</th>
+                    <th>IP</th>
+                    <th>Fabricante</th>
+                    <th>Site</th>
+                    <th>Status</th>
+                    <th>CPU</th>
+                    <th>Backup</th>
+                  </tr>
+                </thead>
+                <tbody id="deviceTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="alarms">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="label">NOC</span>
+                <h2>Fila de alarmes</h2>
+              </div>
+              <button class="primary-button" id="ackAll" type="button">Reconhecer selecionados</button>
+            </div>
+            <div class="alarm-list" id="alarmList"></div>
+          </section>
+        </section>
+
+        <section class="view" id="automation">
+          <div class="automation-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Jobs</span>
+                  <h2>Automacoes operacionais</h2>
+                </div>
+              </div>
+              <div class="job-grid" id="jobGrid"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Conversao</span>
+                  <h2>Payload para modelo canonico</h2>
+                </div>
+              </div>
+              <div class="converter">
+                <textarea id="vendorPayload" spellcheck="false"></textarea>
+                <button class="primary-button" id="convertPayload" type="button">Converter</button>
+                <pre id="canonicalOutput"></pre>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="architecture">
+          <div class="architecture-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">C4 / UML</span>
+                  <h2>Diagramas extraidos do TCC</h2>
+                </div>
+              </div>
+              <div class="diagram-viewer">
+                <img id="diagramImage" src="./assets/image10.png" alt="Diagrama arquitetural" />
+              </div>
+              <div class="diagram-strip" id="diagramStrip"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Responsabilidades</span>
+                  <h2>Layered + Broker</h2>
+                </div>
+              </div>
+              <div class="layer-stack">
+                <div><strong>Apresentacao</strong><span>Portal Web, dashboards e APIs REST</span></div>
+                <div><strong>Aplicacao</strong><span>Casos de uso, orquestracao e auditoria</span></div>
+                <div><strong>Dominio</strong><span>Device, Site, Alarm, Metric, Job e Tenant</span></div>
+                <div><strong>Persistencia</strong><span>PostgreSQL, TimescaleDB, Redis e OpenSearch</span></div>
+                <div><strong>Broker</strong><span>Roteamento assíncrono para adaptadores</span></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="security">
+          <div class="security-grid">
+            <article class="panel security-card">
+              <span class="label">IAM</span>
+              <h2>Identidade corporativa</h2>
+              <p>Integracao com Active Directory, LDAP, Azure AD, Keycloak ou Okta.</p>
+            </article>
+            <article class="panel security-card">
+              <span class="label">RBAC</span>
+              <h2>Papeis operacionais</h2>
+              <p>Administrador global, administrador de rede, operador NOC, auditor e leitura.</p>
+            </article>
+            <article class="panel security-card">
+              <span class="label">Segredos</span>
+              <h2>Credenciais protegidas</h2>
+              <p>Tokens e senhas de equipamentos isolados em Vault, Secrets Manager ou Kubernetes Secrets.</p>
+            </article>
+            <article class="panel security-card">
+              <span class="label">Auditoria</span>
+              <h2>Rastreabilidade</h2>
+              <p>Login, mudancas de configuracao, criacao de usuarios e automacoes ficam registrados.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

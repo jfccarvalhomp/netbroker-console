@@ -1,0 +1,25 @@
+# Runtime state
+data/*.json
+data/*.tmp
+
+# Extracted source material generated from DOCX
+brief_extracted/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Logs and local packages
+*.log
+*.zip
+*.tar.gz
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
