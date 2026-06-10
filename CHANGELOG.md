@@ -8,3 +8,8 @@
 - Added extracted architecture diagrams as frontend assets.
 - Added Windows helper script for local validation.
 
+## 0.2.0 - 2026-06-10
+
+- Refactored the backend into Layered Architecture boundaries aligned with the TCC: presentation, application, domain, and infrastructure.
+- Kept `server.py` as the deployment entry point for systemd.
+- Updated the Ubuntu installer to deploy the Python package modules.

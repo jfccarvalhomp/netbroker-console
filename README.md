@@ -17,7 +17,11 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 ## Arquitetura
 
 - Frontend: `index.html`, `styles.css`, `app.js`
-- Backend/API REST: `server.py`
+- Entrada backend: `server.py`
+- Apresentacao HTTP: `netbroker_console/presentation/`
+- Casos de uso: `netbroker_console/application/`
+- Dominio canonico: `netbroker_console/domain/`
+- Persistencia/infraestrutura: `netbroker_console/infrastructure/`
 - Assets: `assets/`
 - Estado runtime: `data/state.json`
 - Instalador systemd: `scripts/install-ubuntu.sh`
