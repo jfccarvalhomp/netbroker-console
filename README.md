@@ -23,7 +23,8 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Dominio canonico: `netbroker_console/domain/`
 - Persistencia/infraestrutura: `netbroker_console/infrastructure/`
 - Assets: `assets/`
-- Estado runtime: `data/state.json`
+- Estado runtime local: `data/state.json`
+- Persistencia opcional em PostgreSQL: `scripts/setup-postgres-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -41,6 +42,16 @@ Depois acesse:
 http://IP_DO_SERVIDOR:8080/
 ```
 
+## Habilitar PostgreSQL
+
+Por padrao, a aplicacao usa JSON local para facilitar demonstracao e validacao. Para usar PostgreSQL no Ubuntu:
+
+```bash
+sudo bash scripts/setup-postgres-ubuntu.sh
+```
+
+O script instala PostgreSQL, cria banco/usuario, grava `/etc/netbroker-console.env` e reinicia o servico com `NETBROKER_STORE=postgres`.
+
 ## Operacao
 
 ```bash
@@ -52,6 +63,14 @@ sudo systemctl restart netbroker-console
 ## Executar manualmente
 
 ```bash
+python3 server.py --host 0.0.0.0 --port 8080
+```
+
+Com PostgreSQL:
+
+```bash
+NETBROKER_STORE=postgres \
+NETBROKER_POSTGRES_DSN="dbname=netbroker_console user=netbroker_console password=SENHA host=127.0.0.1 port=5432" \
 python3 server.py --host 0.0.0.0 --port 8080
 ```
 

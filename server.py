@@ -9,7 +9,7 @@ import socket
 from pathlib import Path
 
 from netbroker_console.application.services import NetBrokerService
-from netbroker_console.infrastructure.persistence import JsonStateRepository
+from netbroker_console.infrastructure.persistence import JsonStateRepository, PostgresStateRepository
 from netbroker_console.presentation.http import NetBrokerServer
 
 
@@ -22,11 +22,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default=os.environ.get("NETBROKER_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("NETBROKER_PORT", "8080")))
     parser.add_argument("--data", default=os.environ.get("NETBROKER_DATA", str(DEFAULT_DATA_DIR / "state.json")))
+    parser.add_argument("--store", choices=("json", "postgres"), default=os.environ.get("NETBROKER_STORE", "json"))
+    parser.add_argument("--postgres-dsn", default=os.environ.get("NETBROKER_POSTGRES_DSN", ""))
     return parser.parse_args()
 
 
-def build_server(host: str, port: int, data_path: Path) -> NetBrokerServer:
-    repository = JsonStateRepository(data_path)
+def build_repository(store: str, data_path: Path, postgres_dsn: str):
+    if store == "postgres":
+        return PostgresStateRepository(postgres_dsn)
+    return JsonStateRepository(data_path)
+
+
+def build_server(host: str, port: int, repository) -> NetBrokerServer:
     service = NetBrokerService(repository)
     return NetBrokerServer((host, port), service, APP_ROOT)
 
@@ -34,10 +41,13 @@ def build_server(host: str, port: int, data_path: Path) -> NetBrokerServer:
 def main() -> int:
     args = parse_args()
     data_path = Path(args.data)
-    server = build_server(args.host, args.port, data_path)
+    repository = build_repository(args.store, data_path, args.postgres_dsn)
+    server = build_server(args.host, args.port, repository)
     socket.setdefaulttimeout(30)
     print(f"NetBroker Console listening on http://{args.host}:{args.port}")
-    print(f"Data file: {data_path.resolve()}")
+    print(f"Persistence store: {args.store}")
+    if args.store == "json":
+        print(f"Data file: {data_path.resolve()}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

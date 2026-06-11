@@ -45,6 +45,7 @@ WorkingDirectory=${APP_DIR}
 Environment=NETBROKER_HOST=0.0.0.0
 Environment=NETBROKER_PORT=8080
 Environment=NETBROKER_DATA=${APP_DIR}/data/state.json
+EnvironmentFile=-/etc/${APP_NAME}.env
 ExecStart=/usr/bin/python3 ${APP_DIR}/server.py
 Restart=on-failure
 RestartSec=5

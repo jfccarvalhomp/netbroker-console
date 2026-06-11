@@ -13,3 +13,9 @@
 - Refactored the backend into Layered Architecture boundaries aligned with the TCC: presentation, application, domain, and infrastructure.
 - Kept `server.py` as the deployment entry point for systemd.
 - Updated the Ubuntu installer to deploy the Python package modules.
+
+## 0.3.0 - 2026-06-11
+
+- Added optional PostgreSQL persistence repository for the infrastructure layer.
+- Added Ubuntu setup script to install PostgreSQL, create database credentials, and enable the PostgreSQL store through systemd environment configuration.
+- Kept JSON persistence as the default fallback for demos and local validation.
