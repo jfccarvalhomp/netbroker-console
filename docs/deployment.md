@@ -26,6 +26,28 @@ sudo systemctl restart netbroker-console
 sudo journalctl -u netbroker-console -f
 ```
 
+## Local Authentication
+
+Default bootstrap credentials:
+
+```text
+admin / admin123
+```
+
+Set a strong password in `/etc/netbroker-console.env`:
+
+```bash
+NETBROKER_ADMIN_USER=admin
+NETBROKER_ADMIN_PASSWORD=change-this-password
+NETBROKER_ADMIN_ROLE=admin
+```
+
+Then restart:
+
+```bash
+sudo systemctl restart netbroker-console
+```
+
 ## Web Access
 
 ```text
@@ -36,9 +58,13 @@ http://SERVER_IP:8080/
 
 ```bash
 curl http://127.0.0.1:8080/api/health
-curl http://127.0.0.1:8080/api/state
-curl http://127.0.0.1:8080/api/adapters
-curl http://127.0.0.1:8080/metrics
+curl -c /tmp/netbroker.cookies \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' \
+  http://127.0.0.1:8080/api/auth/login
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/state
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/adapters
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/metrics
 ```
 
 ## PostgreSQL Persistence

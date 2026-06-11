@@ -51,12 +51,14 @@ let state = structuredClone(fallbackState);
 let currentVendor = "Todos";
 let searchTerm = "";
 let apiOnline = false;
+let currentUser = null;
 
 async function init() {
   bindEvents();
   setupPayload();
   renderTopology();
   renderDiagrams();
+  await checkSession();
   await loadState();
   openView(location.hash.replace("#", "") || "dashboard");
 }
@@ -90,6 +92,18 @@ function bindEvents() {
   $("#discoverDevices").addEventListener("click", discoverDevices);
   $("#ackAll").addEventListener("click", acknowledgeAlarms);
   $("#convertPayload").addEventListener("click", convertPayload);
+  $("#loginForm").addEventListener("submit", login);
+  $("#logoutButton").addEventListener("click", logout);
+}
+
+async function checkSession() {
+  try {
+    const user = await apiGet("/api/auth/me", false);
+    currentUser = user.authenticated ? user : null;
+  } catch (error) {
+    currentUser = null;
+  }
+  renderAuth();
 }
 
 async function loadState() {
@@ -98,6 +112,11 @@ async function loadState() {
     state = normalizeState(data);
     apiOnline = true;
   } catch (error) {
+    if (error.status === 401) {
+      apiOnline = true;
+      renderAuth(true);
+      return;
+    }
     apiOnline = false;
     toast("API indisponivel. Rodando em modo local somente leitura.");
   }
@@ -123,11 +142,12 @@ function renderAll() {
   renderJobs();
   $("#queueDepth").textContent = new Intl.NumberFormat("pt-BR").format(state.queueDepth);
   $("#brokerState").textContent = apiOnline ? "API + broker operacional" : "Modo estatico local";
+  renderAuth();
 }
 
-async function apiGet(path) {
+async function apiGet(path, requireAuth = true) {
   const response = await fetch(path, { headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`GET ${path} retornou ${response.status}`);
+  if (!response.ok) throw httpError(`GET ${path} retornou ${response.status}`, response.status);
   return response.json();
 }
 
@@ -137,8 +157,47 @@ async function apiPost(path, body = {}) {
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(body)
   });
-  if (!response.ok) throw new Error(`POST ${path} retornou ${response.status}`);
+  if (!response.ok) throw httpError(`POST ${path} retornou ${response.status}`, response.status);
   return response.json();
+}
+
+function httpError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+async function login(event) {
+  event.preventDefault();
+  $("#loginError").textContent = "";
+  try {
+    currentUser = await apiPost("/api/auth/login", {
+      username: $("#loginUser").value,
+      password: $("#loginPassword").value
+    });
+    renderAuth();
+    await loadState();
+    toast(`Bem-vindo, ${currentUser.username}.`);
+  } catch (error) {
+    $("#loginError").textContent = "Usuario ou senha invalidos.";
+  }
+}
+
+async function logout() {
+  try {
+    await apiPost("/api/auth/logout", {});
+  } catch (error) {
+    // Logout local still clears the UI.
+  }
+  currentUser = null;
+  renderAuth(true);
+}
+
+function renderAuth(forceLogin = false) {
+  const needsLogin = forceLogin || (apiOnline && !currentUser);
+  $("#loginScreen").hidden = !needsLogin;
+  $("#userBadge").textContent = currentUser ? `${currentUser.username} · ${currentUser.role}` : "offline";
+  $("#logoutButton").hidden = !currentUser;
 }
 
 function openView(view) {

@@ -25,6 +25,59 @@ body {
   font-family: Inter, Segoe UI, Arial, sans-serif;
 }
 
+.login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 35, 45, 0.88);
+}
+
+.login-screen[hidden] {
+  display: none;
+}
+
+.login-panel {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 26px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.login-panel h1 {
+  font-size: 1.7rem;
+}
+
+.login-panel p,
+.login-panel small {
+  color: var(--muted);
+}
+
+.login-panel label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.login-panel input {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+}
+
+.login-panel input:focus {
+  border-color: var(--accent);
+}
+
 button,
 input,
 textarea {
@@ -173,6 +226,19 @@ h2 {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.user-badge {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 .search {

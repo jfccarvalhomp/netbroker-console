@@ -31,3 +31,9 @@
 - Added a formal multivendor adapter registry for Cisco, Fortinet, Aruba, Juniper, Huawei, and Mikrotik.
 - Added `/api/adapters` to expose adapter capabilities and supported queues.
 - Updated the RabbitMQ worker to process commands through adapter contracts instead of hard-coded queue logic.
+
+## 0.6.0 - 2026-06-11
+
+- Added local bootstrap authentication with HTTP-only session cookies.
+- Added initial RBAC roles: admin, noc, auditor, and readonly.
+- Protected API routes and frontend access behind login.

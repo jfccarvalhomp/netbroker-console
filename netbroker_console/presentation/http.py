@@ -10,10 +10,11 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 
 class NetBrokerServer(ThreadingHTTPServer):
-    def __init__(self, address: tuple[str, int], service, static_root: Path) -> None:
+    def __init__(self, address: tuple[str, int], service, static_root: Path, auth) -> None:
         super().__init__(address, NetBrokerHandler)
         self.service = service
         self.static_root = static_root.resolve()
+        self.auth = auth
 
 
 class NetBrokerHandler(BaseHTTPRequestHandler):
@@ -25,11 +26,23 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             self.send_json(self.server.service.health())
             return
 
+        if parsed.path == "/api/auth/me":
+            user = self.current_user()
+            if not user:
+                self.send_json({"authenticated": False}, HTTPStatus.UNAUTHORIZED)
+                return
+            self.send_json({"authenticated": True, "username": user.username, "role": user.role})
+            return
+
         if parsed.path == "/api/state":
+            if not self.require_role("readonly"):
+                return
             self.send_json(self.server.service.get_state())
             return
 
         if parsed.path == "/api/devices":
+            if not self.require_role("readonly"):
+                return
             query = parse_qs(parsed.query)
             vendor = (query.get("vendor") or ["Todos"])[0]
             term = (query.get("q") or [""])[0]
@@ -37,14 +50,20 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/alarms":
+            if not self.require_role("readonly"):
+                return
             self.send_json(self.server.service.list_alarms())
             return
 
         if parsed.path == "/api/adapters":
+            if not self.require_role("readonly"):
+                return
             self.send_json(self.server.service.list_adapters())
             return
 
         if parsed.path == "/metrics":
+            if not self.require_role("auditor"):
+                return
             self.send_text(self.server.service.metrics(), "text/plain; version=0.0.4; charset=utf-8")
             return
 
@@ -54,20 +73,45 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         body = self.read_json()
 
+        if parsed.path == "/api/auth/login":
+            user = self.server.auth.authenticate(str(body.get("username", "")), str(body.get("password", "")))
+            if not user:
+                self.send_json({"error": "invalid_credentials"}, HTTPStatus.UNAUTHORIZED)
+                return
+            token = self.server.auth.create_session(user)
+            self.send_json(
+                {"authenticated": True, "username": user.username, "role": user.role},
+                headers=[session_cookie(token)],
+            )
+            return
+
+        if parsed.path == "/api/auth/logout":
+            self.server.auth.destroy_session(self.session_token())
+            self.send_json({"authenticated": False}, headers=[clear_session_cookie()])
+            return
+
         if parsed.path == "/api/alarms/ack":
+            if not self.require_role("noc"):
+                return
             ids = [int(item) for item in body.get("ids", []) if str(item).isdigit()]
             self.send_json(self.server.service.acknowledge_alarms(ids))
             return
 
         if parsed.path == "/api/jobs/run":
+            if not self.require_role("noc"):
+                return
             self.send_json(self.server.service.run_job(str(body.get("queue") or "job.manual")))
             return
 
         if parsed.path == "/api/telemetry/simulate":
+            if not self.require_role("noc"):
+                return
             self.send_json(self.server.service.simulate_telemetry())
             return
 
         if parsed.path == "/api/convert":
+            if not self.require_role("readonly"):
+                return
             self.send_json(self.server.service.convert_payload(body))
             return
 
@@ -85,14 +129,37 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.BAD_REQUEST, "Invalid JSON")
             return {}
 
-    def send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
+    def send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK, headers: list[tuple[str, str]] | None = None) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in headers or []:
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
+
+    def current_user(self):
+        return self.server.auth.resolve_session(self.session_token())
+
+    def require_role(self, role: str) -> bool:
+        user = self.current_user()
+        if not user:
+            self.send_json({"error": "authentication_required"}, HTTPStatus.UNAUTHORIZED)
+            return False
+        if not self.server.auth.can(user, role):
+            self.send_json({"error": "forbidden", "requiredRole": role}, HTTPStatus.FORBIDDEN)
+            return False
+        return True
+
+    def session_token(self) -> str | None:
+        cookie = self.headers.get("Cookie", "")
+        for part in cookie.split(";"):
+            name, _, value = part.strip().partition("=")
+            if name == "netbroker_session":
+                return value
+        return None
 
     def send_text(self, text: str, content_type: str) -> None:
         body = text.encode("utf-8")
@@ -130,3 +197,17 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args) -> None:
         sys.stderr.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), fmt % args))
+
+
+def session_cookie(token: str) -> tuple[str, str]:
+    return (
+        "Set-Cookie",
+        f"netbroker_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=28800",
+    )
+
+
+def clear_session_cookie() -> tuple[str, str]:
+    return (
+        "Set-Cookie",
+        "netbroker_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
+    )

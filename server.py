@@ -12,6 +12,7 @@ from netbroker_console.application.services import NetBrokerService
 from netbroker_console.infrastructure.adapters import AdapterRegistry
 from netbroker_console.infrastructure.messaging import build_broker
 from netbroker_console.infrastructure.persistence import JsonStateRepository, PostgresStateRepository
+from netbroker_console.infrastructure.security import LocalAuthService
 from netbroker_console.presentation.http import NetBrokerServer
 
 
@@ -37,9 +38,9 @@ def build_repository(store: str, data_path: Path, postgres_dsn: str):
     return JsonStateRepository(data_path)
 
 
-def build_server(host: str, port: int, repository, broker) -> NetBrokerServer:
+def build_server(host: str, port: int, repository, broker, auth) -> NetBrokerServer:
     service = NetBrokerService(repository, broker, AdapterRegistry())
-    return NetBrokerServer((host, port), service, APP_ROOT)
+    return NetBrokerServer((host, port), service, APP_ROOT, auth)
 
 
 def main() -> int:
@@ -47,7 +48,8 @@ def main() -> int:
     data_path = Path(args.data)
     repository = build_repository(args.store, data_path, args.postgres_dsn)
     broker = build_broker(args.broker, args.rabbitmq_url)
-    server = build_server(args.host, args.port, repository, broker)
+    auth = LocalAuthService.from_environment()
+    server = build_server(args.host, args.port, repository, broker, auth)
     socket.setdefaulttimeout(30)
     print(f"NetBroker Console listening on http://{args.host}:{args.port}")
     print(f"Persistence store: {args.store}")

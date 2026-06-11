@@ -85,6 +85,34 @@ sudo journalctl -u netbroker-console -f
 sudo systemctl restart netbroker-console
 ```
 
+## Autenticacao local
+
+O console possui login local inicial e RBAC. As credenciais bootstrap padrao sao:
+
+```text
+Usuario: admin
+Senha: admin123
+Papel: admin
+```
+
+Em producao, altere `/etc/netbroker-console.env`:
+
+```bash
+sudo tee -a /etc/netbroker-console.env >/dev/null <<'ENV'
+NETBROKER_ADMIN_USER=admin
+NETBROKER_ADMIN_PASSWORD=SENHA_FORTE_AQUI
+NETBROKER_ADMIN_ROLE=admin
+ENV
+sudo systemctl restart netbroker-console
+```
+
+Papeis previstos:
+
+- `admin`
+- `noc`
+- `auditor`
+- `readonly`
+
 ## Executar manualmente
 
 ```bash
@@ -122,6 +150,7 @@ http://127.0.0.1:4190/
 ## APIs
 
 - `GET /api/health`
+- `GET /api/auth/me`
 - `GET /api/state`
 - `GET /api/devices?vendor=Cisco&q=core`
 - `GET /api/alarms`
@@ -131,11 +160,18 @@ http://127.0.0.1:4190/
 - `POST /api/telemetry/simulate`
 - `POST /api/convert`
 - `GET /metrics`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
 
 Exemplo:
 
 ```bash
 curl http://127.0.0.1:8080/api/health
+curl -c /tmp/netbroker.cookies \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' \
+  http://127.0.0.1:8080/api/auth/login
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/state
 ```
 
 ## Licenca
