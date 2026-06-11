@@ -31,7 +31,7 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             if not user:
                 self.send_json({"authenticated": False}, HTTPStatus.UNAUTHORIZED)
                 return
-            self.send_json({"authenticated": True, "username": user.username, "role": user.role})
+            self.send_json({"authenticated": True, "username": user.username, "role": user.role, "provider": self.server.auth.provider_name})
             return
 
         if parsed.path == "/api/state":
@@ -80,7 +80,7 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
                 return
             token = self.server.auth.create_session(user)
             self.send_json(
-                {"authenticated": True, "username": user.username, "role": user.role},
+                {"authenticated": True, "username": user.username, "role": user.role, "provider": self.server.auth.provider_name},
                 headers=[session_cookie(token)],
             )
             return

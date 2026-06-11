@@ -48,6 +48,21 @@ Then restart:
 sudo systemctl restart netbroker-console
 ```
 
+## LDAP / Active Directory Authentication
+
+Install LDAP support and write `/etc/netbroker-console.env`:
+
+```bash
+sudo NETBROKER_LDAP_URI="ldap://ad.example.local:389" \
+  NETBROKER_LDAP_BASE_DN="DC=example,DC=local" \
+  NETBROKER_LDAP_BIND_DN="CN=svc-netbroker,OU=Service Accounts,DC=example,DC=local" \
+  NETBROKER_LDAP_BIND_PASSWORD="service-account-password" \
+  NETBROKER_LDAP_GROUP_ROLE_MAP="CN=NetBroker Admins,OU=Groups,DC=example,DC=local=admin;CN=NetBroker NOC,OU=Groups,DC=example,DC=local=noc" \
+  bash scripts/setup-ldap-ubuntu.sh
+```
+
+The application maps LDAP `memberOf` DNs to RBAC roles through `NETBROKER_LDAP_GROUP_ROLE_MAP`.
+
 ## Web Access
 
 ```text

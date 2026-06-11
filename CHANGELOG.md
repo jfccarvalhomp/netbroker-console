@@ -37,3 +37,9 @@
 - Added local bootstrap authentication with HTTP-only session cookies.
 - Added initial RBAC roles: admin, noc, auditor, and readonly.
 - Protected API routes and frontend access behind login.
+
+## 0.7.0 - 2026-06-11
+
+- Added optional LDAP/Active Directory authentication provider.
+- Added LDAP group-to-RBAC role mapping through environment configuration.
+- Added Ubuntu setup script for LDAP dependencies and service environment configuration.

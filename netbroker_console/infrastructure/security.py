@@ -23,40 +23,10 @@ class AuthenticatedUser:
     role: str
 
 
-class LocalAuthService:
-    def __init__(self, users: dict[str, dict], session_ttl_seconds: int = 28800) -> None:
-        self.users = users
+class SessionManager:
+    def __init__(self, session_ttl_seconds: int = 28800) -> None:
         self.session_ttl_seconds = session_ttl_seconds
         self.sessions: dict[str, tuple[AuthenticatedUser, float]] = {}
-
-    @classmethod
-    def from_environment(cls) -> "LocalAuthService":
-        username = os.environ.get("NETBROKER_ADMIN_USER", "admin")
-        password = os.environ.get("NETBROKER_ADMIN_PASSWORD", "admin123")
-        role = os.environ.get("NETBROKER_ADMIN_ROLE", "admin")
-        salt = secrets.token_bytes(16)
-        return cls(
-            {
-                username: {
-                    "role": role,
-                    "salt": base64.b64encode(salt).decode("ascii"),
-                    "password_hash": _hash_password(password, salt),
-                }
-            }
-        )
-
-    def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
-        record = self.users.get(username)
-        if not record:
-            return None
-
-        salt = base64.b64decode(record["salt"])
-        expected = record["password_hash"]
-        provided = _hash_password(password, salt)
-        if not hmac.compare_digest(expected, provided):
-            return None
-
-        return AuthenticatedUser(username=username, role=record.get("role", "readonly"))
 
     def create_session(self, user: AuthenticatedUser) -> str:
         token = secrets.token_urlsafe(32)
@@ -84,7 +54,172 @@ class LocalAuthService:
         return ROLE_LEVELS.get(user.role, 0) >= ROLE_LEVELS.get(minimum_role, 0)
 
 
+class LocalAuthProvider:
+    name = "local"
+
+    def __init__(self, users: dict[str, dict]) -> None:
+        self.users = users
+
+    @classmethod
+    def from_environment(cls) -> "LocalAuthProvider":
+        username = os.environ.get("NETBROKER_ADMIN_USER", "admin")
+        password = os.environ.get("NETBROKER_ADMIN_PASSWORD", "admin123")
+        role = os.environ.get("NETBROKER_ADMIN_ROLE", "admin")
+        salt = secrets.token_bytes(16)
+        return cls(
+            {
+                username: {
+                    "role": role,
+                    "salt": base64.b64encode(salt).decode("ascii"),
+                    "password_hash": _hash_password(password, salt),
+                }
+            }
+        )
+
+    def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
+        record = self.users.get(username)
+        if not record:
+            return None
+
+        salt = base64.b64decode(record["salt"])
+        expected = record["password_hash"]
+        provided = _hash_password(password, salt)
+        if not hmac.compare_digest(expected, provided):
+            return None
+
+        return AuthenticatedUser(username=username, role=record.get("role", "readonly"))
+
+
+class LdapAuthProvider:
+    name = "ldap"
+
+    def __init__(
+        self,
+        uri: str,
+        base_dn: str,
+        bind_dn: str,
+        bind_password: str,
+        user_filter: str,
+        default_role: str,
+        group_role_map: dict[str, str],
+    ) -> None:
+        if not uri or not base_dn or not user_filter:
+            raise ValueError("LDAP requires NETBROKER_LDAP_URI, NETBROKER_LDAP_BASE_DN, and NETBROKER_LDAP_USER_FILTER")
+        try:
+            import ldap
+        except ImportError as exc:
+            raise RuntimeError("Install python3-ldap to use LDAP authentication") from exc
+
+        self.ldap = ldap
+        self.uri = uri
+        self.base_dn = base_dn
+        self.bind_dn = bind_dn
+        self.bind_password = bind_password
+        self.user_filter = user_filter
+        self.default_role = default_role
+        self.group_role_map = group_role_map
+
+    @classmethod
+    def from_environment(cls) -> "LdapAuthProvider":
+        return cls(
+            uri=os.environ.get("NETBROKER_LDAP_URI", ""),
+            base_dn=os.environ.get("NETBROKER_LDAP_BASE_DN", ""),
+            bind_dn=os.environ.get("NETBROKER_LDAP_BIND_DN", ""),
+            bind_password=os.environ.get("NETBROKER_LDAP_BIND_PASSWORD", ""),
+            user_filter=os.environ.get("NETBROKER_LDAP_USER_FILTER", "(sAMAccountName={username})"),
+            default_role=os.environ.get("NETBROKER_LDAP_DEFAULT_ROLE", "readonly"),
+            group_role_map=parse_group_role_map(os.environ.get("NETBROKER_LDAP_GROUP_ROLE_MAP", "")),
+        )
+
+    def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
+        if not username or not password:
+            return None
+
+        connection = self._connect()
+        try:
+            if self.bind_dn:
+                connection.simple_bind_s(self.bind_dn, self.bind_password)
+            else:
+                connection.simple_bind_s()
+
+            safe_username = username.replace("\\", "\\5c").replace("*", "\\2a").replace("(", "\\28").replace(")", "\\29")
+            search_filter = self.user_filter.format(username=safe_username)
+            attrs = ["dn", "memberOf", "cn", "sAMAccountName", "uid"]
+            result = connection.search_s(self.base_dn, self.ldap.SCOPE_SUBTREE, search_filter, attrs)
+            if not result:
+                return None
+
+            user_dn, user_attrs = result[0]
+        finally:
+            connection.unbind_s()
+
+        user_connection = self._connect()
+        try:
+            user_connection.simple_bind_s(user_dn, password)
+        except self.ldap.INVALID_CREDENTIALS:
+            return None
+        finally:
+            user_connection.unbind_s()
+
+        role = self.role_for(user_attrs)
+        return AuthenticatedUser(username=username, role=role)
+
+    def role_for(self, attrs: dict) -> str:
+        groups = [value.decode("utf-8") if isinstance(value, bytes) else str(value) for value in attrs.get("memberOf", [])]
+        for group_dn, role in self.group_role_map.items():
+            if group_dn in groups:
+                return role
+        return self.default_role
+
+    def _connect(self):
+        connection = self.ldap.initialize(self.uri)
+        connection.set_option(self.ldap.OPT_REFERRALS, 0)
+        return connection
+
+
+class AuthService:
+    def __init__(self, provider, sessions: SessionManager | None = None) -> None:
+        self.provider = provider
+        self.sessions = sessions or SessionManager()
+
+    @classmethod
+    def from_environment(cls) -> "AuthService":
+        provider_name = os.environ.get("NETBROKER_AUTH_PROVIDER", "local")
+        if provider_name == "ldap":
+            provider = LdapAuthProvider.from_environment()
+        else:
+            provider = LocalAuthProvider.from_environment()
+        return cls(provider)
+
+    @property
+    def provider_name(self) -> str:
+        return self.provider.name
+
+    def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
+        return self.provider.authenticate(username, password)
+
+    def create_session(self, user: AuthenticatedUser) -> str:
+        return self.sessions.create_session(user)
+
+    def resolve_session(self, token: str | None) -> AuthenticatedUser | None:
+        return self.sessions.resolve_session(token)
+
+    def destroy_session(self, token: str | None) -> None:
+        self.sessions.destroy_session(token)
+
+    def can(self, user: AuthenticatedUser, minimum_role: str) -> bool:
+        return self.sessions.can(user, minimum_role)
+
+
+def parse_group_role_map(raw: str) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for item in raw.split(";"):
+        group_dn, separator, role = item.rpartition("=")
+        if separator and group_dn.strip() and role.strip():
+            mapping[group_dn.strip()] = role.strip()
+    return mapping
+
+
 def _hash_password(password: str, salt: bytes) -> str:
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 120_000)
     return base64.b64encode(digest).decode("ascii")
-

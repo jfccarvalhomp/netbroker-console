@@ -27,6 +27,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Estado runtime local: `data/state.json`
 - Persistencia opcional em PostgreSQL: `scripts/setup-postgres-ubuntu.sh`
 - Broker opcional RabbitMQ: `scripts/setup-rabbitmq-ubuntu.sh`
+- Autenticacao opcional LDAP/AD: `scripts/setup-ldap-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -112,6 +113,30 @@ Papeis previstos:
 - `noc`
 - `auditor`
 - `readonly`
+
+## Habilitar LDAP/Active Directory
+
+O provedor local continua sendo o padrao. Para autenticar via LDAP/AD no Ubuntu:
+
+```bash
+sudo NETBROKER_LDAP_URI="ldap://ad.example.local:389" \
+  NETBROKER_LDAP_BASE_DN="DC=example,DC=local" \
+  NETBROKER_LDAP_BIND_DN="CN=svc-netbroker,OU=Service Accounts,DC=example,DC=local" \
+  NETBROKER_LDAP_BIND_PASSWORD="SENHA_DA_CONTA_DE_SERVICO" \
+  NETBROKER_LDAP_GROUP_ROLE_MAP="CN=NetBroker Admins,OU=Groups,DC=example,DC=local=admin;CN=NetBroker NOC,OU=Groups,DC=example,DC=local=noc;CN=NetBroker Auditors,OU=Groups,DC=example,DC=local=auditor;CN=NetBroker Readonly,OU=Groups,DC=example,DC=local=readonly" \
+  bash scripts/setup-ldap-ubuntu.sh
+```
+
+Variaveis principais:
+
+- `NETBROKER_AUTH_PROVIDER=ldap`
+- `NETBROKER_LDAP_URI`
+- `NETBROKER_LDAP_BASE_DN`
+- `NETBROKER_LDAP_BIND_DN`
+- `NETBROKER_LDAP_BIND_PASSWORD`
+- `NETBROKER_LDAP_USER_FILTER`
+- `NETBROKER_LDAP_DEFAULT_ROLE`
+- `NETBROKER_LDAP_GROUP_ROLE_MAP`
 
 ## Executar manualmente
 

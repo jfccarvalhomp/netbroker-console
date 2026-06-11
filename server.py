@@ -12,7 +12,7 @@ from netbroker_console.application.services import NetBrokerService
 from netbroker_console.infrastructure.adapters import AdapterRegistry
 from netbroker_console.infrastructure.messaging import build_broker
 from netbroker_console.infrastructure.persistence import JsonStateRepository, PostgresStateRepository
-from netbroker_console.infrastructure.security import LocalAuthService
+from netbroker_console.infrastructure.security import AuthService
 from netbroker_console.presentation.http import NetBrokerServer
 
 
@@ -48,12 +48,13 @@ def main() -> int:
     data_path = Path(args.data)
     repository = build_repository(args.store, data_path, args.postgres_dsn)
     broker = build_broker(args.broker, args.rabbitmq_url)
-    auth = LocalAuthService.from_environment()
+    auth = AuthService.from_environment()
     server = build_server(args.host, args.port, repository, broker, auth)
     socket.setdefaulttimeout(30)
     print(f"NetBroker Console listening on http://{args.host}:{args.port}")
     print(f"Persistence store: {args.store}")
     print(f"Broker: {args.broker}")
+    print(f"Auth provider: {auth.provider_name}")
     if args.store == "json":
         print(f"Data file: {data_path.resolve()}")
     try:
