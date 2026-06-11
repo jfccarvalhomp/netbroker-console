@@ -17,14 +17,22 @@ fi
 apt-get update
 apt-get install -y postgresql python3-psycopg2 openssl
 
-if ! sudo -u postgres psql -tAc "select 1 from pg_roles where rolname='${DB_USER}'" | grep -q 1; then
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -c "create role ${DB_USER} login password '${DB_PASSWORD}'"
+run_psql() {
+  (cd /tmp && sudo -u postgres psql "$@")
+}
+
+run_createdb() {
+  (cd /tmp && sudo -u postgres createdb "$@")
+}
+
+if ! run_psql -tAc "select 1 from pg_roles where rolname='${DB_USER}'" | grep -q 1; then
+  run_psql -v ON_ERROR_STOP=1 -c "create role ${DB_USER} login password '${DB_PASSWORD}'"
 else
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -c "alter role ${DB_USER} with password '${DB_PASSWORD}'"
+  run_psql -v ON_ERROR_STOP=1 -c "alter role ${DB_USER} with password '${DB_PASSWORD}'"
 fi
 
-if ! sudo -u postgres psql -tAc "select 1 from pg_database where datname='${DB_NAME}'" | grep -q 1; then
-  sudo -u postgres createdb -O "${DB_USER}" "${DB_NAME}"
+if ! run_psql -tAc "select 1 from pg_database where datname='${DB_NAME}'" | grep -q 1; then
+  run_createdb -O "${DB_USER}" "${DB_NAME}"
 fi
 
 cat > "${ENV_FILE}" <<ENV
