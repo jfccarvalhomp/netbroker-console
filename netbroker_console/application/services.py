@@ -8,12 +8,14 @@ from netbroker_console.domain.canonical import (
     iso_now,
     now_label,
 )
+from netbroker_console.infrastructure.adapters import AdapterRegistry
 
 
 class NetBrokerService:
-    def __init__(self, repository, broker=None) -> None:
+    def __init__(self, repository, broker=None, adapters=None) -> None:
         self.repository = repository
         self.broker = broker
+        self.adapters = adapters or AdapterRegistry()
 
     def health(self) -> dict:
         broker_name = getattr(self.broker, "name", "memory")
@@ -28,6 +30,9 @@ class NetBrokerService:
 
     def list_alarms(self) -> dict:
         return {"alarms": self.repository.read()["alarms"]}
+
+    def list_adapters(self) -> dict:
+        return {"adapters": self.adapters.describe()}
 
     def acknowledge_alarms(self, ids: list[int]) -> dict:
         selected = {int(item) for item in ids}

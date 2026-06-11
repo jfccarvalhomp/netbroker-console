@@ -9,6 +9,7 @@ import socket
 from pathlib import Path
 
 from netbroker_console.application.services import NetBrokerService
+from netbroker_console.infrastructure.adapters import AdapterRegistry
 from netbroker_console.infrastructure.messaging import build_broker
 from netbroker_console.infrastructure.persistence import JsonStateRepository, PostgresStateRepository
 from netbroker_console.presentation.http import NetBrokerServer
@@ -37,7 +38,7 @@ def build_repository(store: str, data_path: Path, postgres_dsn: str):
 
 
 def build_server(host: str, port: int, repository, broker) -> NetBrokerServer:
-    service = NetBrokerService(repository, broker)
+    service = NetBrokerService(repository, broker, AdapterRegistry())
     return NetBrokerServer((host, port), service, APP_ROOT)
 
 

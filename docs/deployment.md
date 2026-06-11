@@ -37,6 +37,7 @@ http://SERVER_IP:8080/
 ```bash
 curl http://127.0.0.1:8080/api/health
 curl http://127.0.0.1:8080/api/state
+curl http://127.0.0.1:8080/api/adapters
 curl http://127.0.0.1:8080/metrics
 ```
 

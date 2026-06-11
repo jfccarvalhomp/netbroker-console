@@ -25,3 +25,9 @@
 - Added optional RabbitMQ broker integration for asynchronous automation jobs.
 - Added a worker process that consumes RabbitMQ queues and simulates multivendor adapter processing.
 - Added Ubuntu setup script and systemd worker service for RabbitMQ.
+
+## 0.5.0 - 2026-06-11
+
+- Added a formal multivendor adapter registry for Cisco, Fortinet, Aruba, Juniper, Huawei, and Mikrotik.
+- Added `/api/adapters` to expose adapter capabilities and supported queues.
+- Updated the RabbitMQ worker to process commands through adapter contracts instead of hard-coded queue logic.

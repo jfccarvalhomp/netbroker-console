@@ -40,6 +40,10 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             self.send_json(self.server.service.list_alarms())
             return
 
+        if parsed.path == "/api/adapters":
+            self.send_json(self.server.service.list_adapters())
+            return
+
         if parsed.path == "/metrics":
             self.send_text(self.server.service.metrics(), "text/plain; version=0.0.4; charset=utf-8")
             return
@@ -126,4 +130,3 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args) -> None:
         sys.stderr.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), fmt % args))
-

@@ -10,6 +10,7 @@ import socket
 from pathlib import Path
 
 from netbroker_console.domain.canonical import now_label
+from netbroker_console.infrastructure.adapters import AdapterRegistry
 from netbroker_console.infrastructure.persistence import JsonStateRepository, PostgresStateRepository
 
 
@@ -35,41 +36,24 @@ def build_repository(store: str, data_path: Path, postgres_dsn: str):
     return JsonStateRepository(data_path)
 
 
-def adapter_name(queue: str) -> str:
-    names = {
-        "device.discovery": "Discovery Adapter",
-        "inventory.sync": "Inventory Adapter",
-        "config.backup": "Backup Adapter",
-        "alarm.remediate": "Remediation Adapter",
-    }
-    return names.get(queue, "Generic Adapter")
+def record_processed(repository, registry: AdapterRegistry, queue: str, payload: dict) -> None:
+    results = registry.execute(queue, payload)
 
-
-def record_processed(repository, queue: str, payload: dict) -> None:
     def update(state: dict) -> None:
-        state["events"].insert(0, [now_label(), f"{adapter_name(queue)} processou comando {queue} via RabbitMQ"])
+        for result in reversed(results):
+            state["events"].insert(0, [now_label(), f"{result.message} via RabbitMQ"])
+
+            if result.discovered_device:
+                known_hosts = {device["host"] for device in state["devices"]}
+                if result.discovered_device["host"] not in known_hosts:
+                    state["devices"].append(result.discovered_device)
+
+            if result.backup_completed:
+                for device in state["devices"]:
+                    if device["vendor"] == result.vendor and device["status"] != "DOWN":
+                        device["backup"] = "Hoje"
+
         state["events"] = state["events"][:8]
-
-        if queue == "device.discovery":
-            known_hosts = {device["host"] for device in state["devices"]}
-            if "SW-LAB-RMQ-01" not in known_hosts:
-                state["devices"].append(
-                    {
-                        "host": "SW-LAB-RMQ-01",
-                        "ip": "10.99.0.10",
-                        "vendor": "Cisco",
-                        "model": "Catalyst 9300",
-                        "site": "Lab RabbitMQ",
-                        "status": "UP",
-                        "cpu": 22,
-                        "backup": "Nunca",
-                    }
-                )
-
-        if queue == "config.backup":
-            for device in state["devices"]:
-                if device["status"] != "DOWN":
-                    device["backup"] = "Hoje"
 
     repository.update(update)
 
@@ -82,6 +66,7 @@ def main() -> int:
         raise RuntimeError("Install python3-pika to run the RabbitMQ worker") from exc
 
     repository = build_repository(args.store, Path(args.data), args.postgres_dsn)
+    registry = AdapterRegistry()
     queues = [queue.strip() for queue in args.queues.split(",") if queue.strip()]
     socket.setdefaulttimeout(30)
 
@@ -97,7 +82,7 @@ def main() -> int:
         try:
             message = json.loads(body.decode("utf-8"))
             queue = message.get("queue") or method.routing_key
-            record_processed(repository, queue, message.get("payload") or {})
+            record_processed(repository, registry, queue, message.get("payload") or {})
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
