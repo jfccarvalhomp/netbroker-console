@@ -25,6 +25,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Assets: `assets/`
 - Estado runtime local: `data/state.json`
 - Persistencia opcional em PostgreSQL: `scripts/setup-postgres-ubuntu.sh`
+- Broker opcional RabbitMQ: `scripts/setup-rabbitmq-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -52,6 +53,29 @@ sudo bash scripts/setup-postgres-ubuntu.sh
 
 O script instala PostgreSQL, cria banco/usuario, grava `/etc/netbroker-console.env` e reinicia o servico com `NETBROKER_STORE=postgres`.
 
+## Habilitar RabbitMQ
+
+Para transformar os jobs de automacao em mensagens assincronas reais:
+
+```bash
+sudo bash scripts/setup-rabbitmq-ubuntu.sh
+```
+
+O script instala RabbitMQ e `python3-pika`, habilita `NETBROKER_BROKER=rabbitmq` e cria o servico `netbroker-console-worker`, responsavel por consumir as filas:
+
+- `device.discovery`
+- `inventory.sync`
+- `config.backup`
+- `alarm.remediate`
+
+Comandos uteis:
+
+```bash
+sudo systemctl status rabbitmq-server
+sudo systemctl status netbroker-console-worker
+sudo journalctl -u netbroker-console-worker -f
+```
+
 ## Operacao
 
 ```bash
@@ -71,6 +95,14 @@ Com PostgreSQL:
 ```bash
 NETBROKER_STORE=postgres \
 NETBROKER_POSTGRES_DSN="dbname=netbroker_console user=netbroker_console password=SENHA host=127.0.0.1 port=5432" \
+python3 server.py --host 0.0.0.0 --port 8080
+```
+
+Com RabbitMQ:
+
+```bash
+NETBROKER_BROKER=rabbitmq \
+NETBROKER_RABBITMQ_URL="amqp://guest:guest@127.0.0.1:5672/%2f" \
 python3 server.py --host 0.0.0.0 --port 8080
 ```
 

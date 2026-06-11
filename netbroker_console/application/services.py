@@ -11,11 +11,13 @@ from netbroker_console.domain.canonical import (
 
 
 class NetBrokerService:
-    def __init__(self, repository) -> None:
+    def __init__(self, repository, broker=None) -> None:
         self.repository = repository
+        self.broker = broker
 
     def health(self) -> dict:
-        return {"status": "ok", "service": "netbroker-console", "time": iso_now()}
+        broker_name = getattr(self.broker, "name", "memory")
+        return {"status": "ok", "service": "netbroker-console", "broker": broker_name, "time": iso_now()}
 
     def get_state(self) -> dict:
         return self.repository.read()
@@ -39,10 +41,14 @@ class NetBrokerService:
 
     def run_job(self, queue: str) -> dict:
         command_queue = str(queue or "job.manual")
+        message = None
+        if self.broker is not None:
+            message = self.broker.publish_command(command_queue, {"requestedBy": "web-console"})
 
         def run(state: dict) -> None:
             state["queueDepth"] = int(state.get("queueDepth", 0)) + random.randint(30, 150)
-            state["events"].insert(0, [now_label(), f"Comando publicado em {command_queue}"])
+            suffix = " via RabbitMQ" if message and getattr(self.broker, "name", "") == "rabbitmq" else ""
+            state["events"].insert(0, [now_label(), f"Comando publicado em {command_queue}{suffix}"])
             state["events"] = state["events"][:8]
 
         return self.repository.update(run)
@@ -78,4 +84,3 @@ class NetBrokerService:
             "",
         ]
         return "\n".join(lines)
-

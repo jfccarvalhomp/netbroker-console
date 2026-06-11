@@ -19,3 +19,9 @@
 - Added optional PostgreSQL persistence repository for the infrastructure layer.
 - Added Ubuntu setup script to install PostgreSQL, create database credentials, and enable the PostgreSQL store through systemd environment configuration.
 - Kept JSON persistence as the default fallback for demos and local validation.
+
+## 0.4.0 - 2026-06-11
+
+- Added optional RabbitMQ broker integration for asynchronous automation jobs.
+- Added a worker process that consumes RabbitMQ queues and simulates multivendor adapter processing.
+- Added Ubuntu setup script and systemd worker service for RabbitMQ.

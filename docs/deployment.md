@@ -55,6 +55,24 @@ NETBROKER_STORE=postgres
 NETBROKER_POSTGRES_DSN=dbname=netbroker_console user=netbroker_console password=... host=127.0.0.1 port=5432
 ```
 
+## RabbitMQ Broker
+
+To enable asynchronous job dispatch through RabbitMQ:
+
+```bash
+sudo bash scripts/setup-rabbitmq-ubuntu.sh
+```
+
+This installs RabbitMQ and `python3-pika`, enables `NETBROKER_BROKER=rabbitmq`, restarts the web service, and starts the `netbroker-console-worker` service.
+
+Operational checks:
+
+```bash
+sudo systemctl status rabbitmq-server
+sudo systemctl status netbroker-console-worker
+sudo journalctl -u netbroker-console-worker -f
+```
+
 ## Reverse Proxy Recommendation
 
 For production exposure, place Nginx in front of the application and terminate TLS there. Keep the Python service bound to an internal port when the server is internet-facing.
