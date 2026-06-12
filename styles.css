@@ -347,7 +347,8 @@ h2 {
 
 .dashboard-grid,
 .architecture-layout,
-.automation-layout {
+.automation-layout,
+.observability-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.55fr);
   gap: 16px;
@@ -429,6 +430,23 @@ h2 {
 .event time {
   color: var(--muted);
   font-weight: 800;
+}
+
+.log-entry.info {
+  border-left: 5px solid var(--ok);
+}
+
+.log-entry.warning {
+  border-left: 5px solid var(--warn);
+}
+
+.log-entry.error {
+  border-left: 5px solid var(--bad);
+}
+
+td code {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.82rem;
 }
 
 .health-card {
@@ -678,6 +696,7 @@ pre {
   .dashboard-grid,
   .architecture-layout,
   .automation-layout,
+  .observability-layout,
   .kpi-grid,
   .health-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -703,6 +722,7 @@ pre {
   .dashboard-grid,
   .architecture-layout,
   .automation-layout,
+  .observability-layout,
   .kpi-grid,
   .health-grid,
   .security-grid,

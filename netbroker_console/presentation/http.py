@@ -10,15 +10,21 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 
 class NetBrokerServer(ThreadingHTTPServer):
-    def __init__(self, address: tuple[str, int], service, static_root: Path, auth) -> None:
+    def __init__(self, address: tuple[str, int], service, static_root: Path, auth, observability) -> None:
         super().__init__(address, NetBrokerHandler)
         self.service = service
         self.static_root = static_root.resolve()
         self.auth = auth
+        self.observability = observability
 
 
 class NetBrokerHandler(BaseHTTPRequestHandler):
     server_version = "NetBrokerConsole/0.2"
+
+    def setup(self) -> None:
+        super().setup()
+        self.trace_id, self.started_at = self.server.observability.start_trace()
+        self._observability_recorded = False
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -70,6 +76,18 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             except ValueError:
                 limit = 100
             self.send_json(self.server.service.list_audit(limit))
+            return
+
+        if parsed.path == "/api/observability/logs":
+            if not self.require_role("auditor"):
+                return
+            self.send_json(self.server.service.list_logs(query_limit(parsed.query)))
+            return
+
+        if parsed.path == "/api/observability/traces":
+            if not self.require_role("auditor"):
+                return
+            self.send_json(self.server.service.list_traces(query_limit(parsed.query)))
             return
 
         if parsed.path == "/metrics":
@@ -151,9 +169,11 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
 
     def send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK, headers: list[tuple[str, str]] | None = None) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.record_observability(status)
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Trace-Id", self.trace_id)
         self.send_header("Cache-Control", "no-store")
         for name, value in headers or []:
             self.send_header(name, value)
@@ -185,9 +205,11 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
 
     def send_text(self, text: str, content_type: str) -> None:
         body = text.encode("utf-8")
+        self.record_observability(HTTPStatus.OK)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Trace-Id", self.trace_id)
         self.end_headers()
         self.wfile.write(body)
 
@@ -211,11 +233,32 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
 
         content_type, _ = mimetypes.guess_type(candidate.name)
         body = candidate.read_bytes()
+        self.record_observability(HTTPStatus.OK)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type or "application/octet-stream")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Trace-Id", self.trace_id)
         self.end_headers()
         self.wfile.write(body)
+
+    def send_error(self, code, message=None, explain=None):
+        self.record_observability(int(code))
+        super().send_error(code, message, explain)
+
+    def record_observability(self, status: int) -> None:
+        if self._observability_recorded:
+            return
+        user = self.current_user()
+        actor = user.username if user else "anonymous"
+        self.server.observability.record_request(
+            self.trace_id,
+            self.started_at,
+            self.command,
+            self.path,
+            int(status),
+            actor,
+        )
+        self._observability_recorded = True
 
     def log_message(self, fmt: str, *args) -> None:
         sys.stderr.write("%s - - [%s] %s\n" % (self.address_string(), self.log_date_time_string(), fmt % args))
@@ -233,3 +276,11 @@ def clear_session_cookie() -> tuple[str, str]:
         "Set-Cookie",
         "netbroker_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
     )
+
+
+def query_limit(query: str) -> int:
+    try:
+        limit = int((parse_qs(query).get("limit") or ["100"])[0])
+    except ValueError:
+        return 100
+    return max(1, min(limit, 500))

@@ -43,6 +43,7 @@
           <a class="nav-link" href="#architecture" data-view="architecture">Arquitetura</a>
           <a class="nav-link" href="#security" data-view="security">Seguranca</a>
           <a class="nav-link" href="#audit" data-view="audit">Auditoria</a>
+          <a class="nav-link" href="#observability" data-view="observability">Observabilidade</a>
         </nav>
 
         <section class="side-panel">
@@ -312,6 +313,69 @@
               </table>
             </div>
           </section>
+        </section>
+
+        <section class="view" id="observability">
+          <div class="kpi-grid">
+            <article class="kpi">
+              <span>Requisicoes HTTP</span>
+              <strong id="obsRequests">0</strong>
+              <small>total observado desde o boot</small>
+            </article>
+            <article class="kpi warn">
+              <span>Erros HTTP</span>
+              <strong id="obsErrors">0</strong>
+              <small>respostas 4xx e 5xx</small>
+            </article>
+            <article class="kpi">
+              <span>Latencia media</span>
+              <strong id="obsLatency">0 ms</strong>
+              <small>duracao media das requisicoes</small>
+            </article>
+            <article class="kpi">
+              <span>Prometheus</span>
+              <strong>/metrics</strong>
+              <small>endpoint protegido por RBAC</small>
+            </article>
+          </div>
+
+          <div class="observability-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Tracing</span>
+                  <h2>Ultimas requisicoes</h2>
+                </div>
+                <button class="ghost-button" id="refreshObservability" type="button">Atualizar</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Trace ID</th>
+                      <th>Horario</th>
+                      <th>Metodo</th>
+                      <th>Rota</th>
+                      <th>Status</th>
+                      <th>Duracao</th>
+                      <th>Ator</th>
+                    </tr>
+                  </thead>
+                  <tbody id="traceTable"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="label">Logs</span>
+                  <h2>Eventos observados</h2>
+                </div>
+              </div>
+              <div class="event-stream" id="logList"></div>
+            </section>
+          </div>
         </section>
       </main>
     </div>

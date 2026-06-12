@@ -28,7 +28,16 @@ const fallbackState = {
     ["10:44", "Monitoring Service correlacionou alarme de CPU no FW-DC-EDGE-01"],
     ["10:45", "OpenTelemetry fechou trace distribuido do job inventory.sync"]
   ],
-  audit: []
+  audit: [],
+  observability: {
+    logs: [],
+    traces: [],
+    metrics: {
+      requests: 0,
+      errors: 0,
+      avgDurationMs: 0
+    }
+  }
 };
 
 const diagrams = [
@@ -43,7 +52,8 @@ const titles = {
   automation: "Automacao e integracao",
   architecture: "Arquitetura proposta",
   security: "Seguranca e governanca",
-  audit: "Auditoria de acoes"
+  audit: "Auditoria de acoes",
+  observability: "Observabilidade"
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -95,6 +105,7 @@ function bindEvents() {
   $("#ackAll").addEventListener("click", acknowledgeAlarms);
   $("#convertPayload").addEventListener("click", convertPayload);
   $("#refreshAudit").addEventListener("click", loadAudit);
+  $("#refreshObservability").addEventListener("click", loadObservability);
   $("#loginForm").addEventListener("submit", login);
   $("#logoutButton").addEventListener("click", logout);
 }
@@ -134,7 +145,8 @@ function normalizeState(data) {
     alarms: data.alarms ?? fallbackState.alarms,
     jobs: data.jobs ?? fallbackState.jobs,
     events: data.events ?? fallbackState.events,
-    audit: data.audit ?? fallbackState.audit
+    audit: data.audit ?? fallbackState.audit,
+    observability: state.observability ?? fallbackState.observability
   };
 }
 
@@ -145,6 +157,7 @@ function renderAll() {
   renderAlarms();
   renderJobs();
   renderAudit();
+  renderObservability();
   $("#queueDepth").textContent = new Intl.NumberFormat("pt-BR").format(state.queueDepth);
   $("#brokerState").textContent = apiOnline ? "API + broker operacional" : "Modo estatico local";
   renderAuth();
@@ -201,7 +214,7 @@ async function logout() {
 function renderAuth(forceLogin = false) {
   const needsLogin = forceLogin || (apiOnline && !currentUser);
   $("#loginScreen").hidden = !needsLogin;
-  $("#userBadge").textContent = currentUser ? `${currentUser.username} · ${currentUser.role}` : "offline";
+  $("#userBadge").textContent = currentUser ? `${currentUser.username} / ${currentUser.role}` : "offline";
   $("#logoutButton").hidden = !currentUser;
 }
 
@@ -211,6 +224,7 @@ function openView(view) {
   $$(".nav-link").forEach((link) => link.classList.toggle("active", link.dataset.view === view));
   $("#viewTitle").textContent = titles[view];
   history.replaceState(null, "", `#${view}`);
+  if (view === "observability") loadObservability();
 }
 
 function filteredDevices() {
@@ -322,6 +336,65 @@ async function loadAudit() {
   } catch (error) {
     toast(error.status === 403 ? "Seu perfil nao permite consultar auditoria." : "Falha ao carregar auditoria.");
   }
+}
+
+function renderObservability() {
+  const data = state.observability || fallbackState.observability;
+  $("#obsRequests").textContent = new Intl.NumberFormat("pt-BR").format(data.metrics.requests || 0);
+  $("#obsErrors").textContent = new Intl.NumberFormat("pt-BR").format(data.metrics.errors || 0);
+  $("#obsLatency").textContent = `${Number(data.metrics.avgDurationMs || 0).toFixed(2)} ms`;
+  $("#traceTable").innerHTML = (data.traces || []).map((trace) => `
+    <tr>
+      <td><code>${trace.traceId}</code></td>
+      <td>${formatAuditTime(trace.time)}</td>
+      <td>${trace.method}</td>
+      <td>${trace.path}</td>
+      <td><span class="status ${trace.status >= 500 ? "bad" : trace.status >= 400 ? "warn" : "ok"}">${trace.status}</span></td>
+      <td>${trace.durationMs} ms</td>
+      <td>${trace.actor || "anonymous"}</td>
+    </tr>
+  `).join("");
+  $("#logList").innerHTML = (data.logs || []).map((log) => `
+    <article class="event log-entry ${log.level}">
+      <time>${formatAuditTime(log.time)}</time>
+      <span><strong>${log.level.toUpperCase()}</strong> ${log.message}</span>
+    </article>
+  `).join("");
+}
+
+async function loadObservability() {
+  try {
+    const [logs, traces, metricsText] = await Promise.all([
+      apiGet("/api/observability/logs?limit=100"),
+      apiGet("/api/observability/traces?limit=100"),
+      fetch("/metrics", { headers: { Accept: "text/plain" } }).then((response) => {
+        if (!response.ok) throw httpError(`GET /metrics retornou ${response.status}`, response.status);
+        return response.text();
+      })
+    ]);
+    state.observability = {
+      logs: logs.logs || [],
+      traces: traces.traces || [],
+      metrics: parseMetrics(metricsText)
+    };
+    renderObservability();
+    toast("Observabilidade atualizada.");
+  } catch (error) {
+    toast(error.status === 403 ? "Seu perfil nao permite consultar observabilidade." : "Falha ao carregar observabilidade.");
+  }
+}
+
+function parseMetrics(text) {
+  const values = {};
+  text.split("\n").forEach((line) => {
+    const match = line.match(/^(netbroker_[a-z_]+)\s+([0-9.]+)$/);
+    if (match) values[match[1]] = Number(match[2]);
+  });
+  return {
+    requests: values.netbroker_http_requests_total || 0,
+    errors: values.netbroker_http_errors_total || 0,
+    avgDurationMs: values.netbroker_http_request_duration_avg_ms || 0
+  };
 }
 
 function formatAuditTime(value) {

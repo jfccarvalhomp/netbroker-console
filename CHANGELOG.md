@@ -65,3 +65,10 @@
 - Added optional Cisco ISE authorization policy layer.
 - Added user, authorization profile, and SGT to RBAC mapping for ISE-oriented deployments.
 - Added Ubuntu setup and interactive configuration scripts for ISE authorization.
+
+## 0.11.0 - 2026-06-12
+
+- Added in-memory observability recorder for HTTP logs, request traces, counters, errors, and average latency.
+- Added `/api/observability/logs` and `/api/observability/traces`, protected by auditor RBAC.
+- Expanded `/metrics` with HTTP request, error, and latency metrics.
+- Added an Observability view to the web console.

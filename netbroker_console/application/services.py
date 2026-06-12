@@ -12,10 +12,11 @@ from netbroker_console.infrastructure.adapters import AdapterRegistry
 
 
 class NetBrokerService:
-    def __init__(self, repository, broker=None, adapters=None) -> None:
+    def __init__(self, repository, broker=None, adapters=None, observability=None) -> None:
         self.repository = repository
         self.broker = broker
         self.adapters = adapters or AdapterRegistry()
+        self.observability = observability
 
     def health(self) -> dict:
         broker_name = getattr(self.broker, "name", "memory")
@@ -37,6 +38,16 @@ class NetBrokerService:
     def list_audit(self, limit: int = 100) -> dict:
         state = self.repository.read()
         return {"audit": state.get("audit", [])[:limit]}
+
+    def list_logs(self, limit: int = 100) -> dict:
+        if not self.observability:
+            return {"logs": []}
+        return {"logs": self.observability.list_logs(limit)}
+
+    def list_traces(self, limit: int = 100) -> dict:
+        if not self.observability:
+            return {"traces": []}
+        return {"traces": self.observability.list_traces(limit)}
 
     def record_audit(self, actor: str, role: str, action: str, status: str, details: str = "") -> None:
         def write(state: dict) -> None:
@@ -103,6 +114,7 @@ class NetBrokerService:
     def metrics(self) -> str:
         state = self.repository.read()
         critical = sum(1 for alarm in state["alarms"] if alarm["severity"] == "critical")
+        obs = self.observability.metrics() if self.observability else {"requestCount": 0, "errorCount": 0, "avgDurationMs": 0}
         lines = [
             "# HELP netbroker_devices_total Total de dispositivos gerenciados",
             "# TYPE netbroker_devices_total gauge",
@@ -113,6 +125,15 @@ class NetBrokerService:
             "# HELP netbroker_queue_depth Mensagens simuladas em fila",
             "# TYPE netbroker_queue_depth gauge",
             f"netbroker_queue_depth {int(state.get('queueDepth', 0))}",
+            "# HELP netbroker_http_requests_total Total de requisicoes HTTP observadas",
+            "# TYPE netbroker_http_requests_total counter",
+            f"netbroker_http_requests_total {obs['requestCount']}",
+            "# HELP netbroker_http_errors_total Total de respostas HTTP com erro",
+            "# TYPE netbroker_http_errors_total counter",
+            f"netbroker_http_errors_total {obs['errorCount']}",
+            "# HELP netbroker_http_request_duration_avg_ms Duracao media das requisicoes HTTP em ms",
+            "# TYPE netbroker_http_request_duration_avg_ms gauge",
+            f"netbroker_http_request_duration_avg_ms {obs['avgDurationMs']}",
             "",
         ]
         return "\n".join(lines)

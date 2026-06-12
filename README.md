@@ -11,6 +11,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Fila de alarmes com reconhecimento auditavel.
 - Jobs de automacao simulando publicacao em broker.
 - Auditoria de login, logout, acesso negado e acoes operacionais.
+- Observabilidade com logs HTTP, traces por requisicao, `X-Trace-Id` e metricas de erro/latencia.
 - Registro de adaptadores Cisco, Fortinet, Aruba, Juniper, Huawei e Mikrotik.
 - Conversor de payload de fabricante para modelo canonico.
 - Galeria de diagramas arquiteturais extraidos do trabalho.
@@ -87,6 +88,24 @@ sudo journalctl -u netbroker-console-worker -f
 sudo systemctl status netbroker-console
 sudo journalctl -u netbroker-console -f
 sudo systemctl restart netbroker-console
+```
+
+## Observabilidade
+
+A aplicacao expoe observabilidade basica sem dependencias externas:
+
+- Tela web `Observabilidade`, acessivel para usuarios com papel `auditor` ou superior.
+- `GET /api/observability/logs?limit=100` para eventos HTTP recentes.
+- `GET /api/observability/traces?limit=100` para traces de requisicoes com `traceId`, rota, status, duracao e ator.
+- Header `X-Trace-Id` nas respostas JSON, texto e arquivos estaticos.
+- `GET /metrics` com metricas Prometheus de dispositivos, alarmes, fila, requisicoes, erros e latencia media.
+
+Exemplos no Ubuntu:
+
+```bash
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/observability/traces
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/observability/logs
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/metrics
 ```
 
 ## Autenticacao local
@@ -248,6 +267,8 @@ http://127.0.0.1:4190/
 - `GET /api/alarms`
 - `GET /api/adapters`
 - `GET /api/audit?limit=100`
+- `GET /api/observability/logs?limit=100`
+- `GET /api/observability/traces?limit=100`
 - `POST /api/alarms/ack`
 - `POST /api/jobs/run`
 - `POST /api/telemetry/simulate`
