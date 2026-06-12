@@ -43,3 +43,7 @@
 - Added optional LDAP/Active Directory authentication provider.
 - Added LDAP group-to-RBAC role mapping through environment configuration.
 - Added Ubuntu setup script for LDAP dependencies and service environment configuration.
+
+## 0.7.1 - 2026-06-12
+
+- Added an interactive LDAP configuration helper to avoid typing long environment-variable commands manually.

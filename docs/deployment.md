@@ -50,6 +50,12 @@ sudo systemctl restart netbroker-console
 
 ## LDAP / Active Directory Authentication
 
+Interactive helper:
+
+```bash
+bash scripts/configure-ldap-ubuntu.sh
+```
+
 Install LDAP support and write `/etc/netbroker-console.env`:
 
 ```bash

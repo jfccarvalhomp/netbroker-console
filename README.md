@@ -118,6 +118,14 @@ Papeis previstos:
 
 O provedor local continua sendo o padrao. Para autenticar via LDAP/AD no Ubuntu:
 
+Modo interativo recomendado:
+
+```bash
+bash scripts/configure-ldap-ubuntu.sh
+```
+
+Modo direto:
+
 ```bash
 sudo NETBROKER_LDAP_URI="ldap://ad.example.local:389" \
   NETBROKER_LDAP_BASE_DN="DC=example,DC=local" \
