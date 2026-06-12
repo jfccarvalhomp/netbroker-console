@@ -21,6 +21,7 @@ ROLE_LEVELS = {
 class AuthenticatedUser:
     username: str
     role: str
+    attributes: dict[str, str] | None = None
 
 
 class SessionManager:
@@ -87,7 +88,7 @@ class LocalAuthProvider:
         if not hmac.compare_digest(expected, provided):
             return None
 
-        return AuthenticatedUser(username=username, role=record.get("role", "readonly"))
+        return AuthenticatedUser(username=username, role=record.get("role", "readonly"), attributes={})
 
 
 class LdapAuthProvider:
@@ -162,7 +163,7 @@ class LdapAuthProvider:
             user_connection.unbind_s()
 
         role = self.role_for(user_attrs)
-        return AuthenticatedUser(username=username, role=role)
+        return AuthenticatedUser(username=username, role=role, attributes={"groups": ";".join(groups)})
 
     def role_for(self, attrs: dict) -> str:
         groups = [value.decode("utf-8") if isinstance(value, bytes) else str(value) for value in attrs.get("memberOf", [])]
@@ -232,13 +233,64 @@ class TacacsAuthProvider:
             return None
 
         role = self.user_role_map.get(username, self.default_role)
-        return AuthenticatedUser(username=username, role=role)
+        return AuthenticatedUser(username=username, role=role, attributes={})
+
+
+class IseAuthorizationPolicy:
+    name = "ise"
+
+    def __init__(
+        self,
+        enabled: bool,
+        default_role: str,
+        user_role_map: dict[str, str],
+        profile_role_map: dict[str, str],
+        sgt_role_map: dict[str, str],
+    ) -> None:
+        self.enabled = enabled
+        self.default_role = default_role
+        self.user_role_map = user_role_map
+        self.profile_role_map = profile_role_map
+        self.sgt_role_map = sgt_role_map
+
+    @classmethod
+    def from_environment(cls) -> "IseAuthorizationPolicy":
+        return cls(
+            enabled=os.environ.get("NETBROKER_ISE_ENABLED", "false").lower() in {"1", "true", "yes", "on"},
+            default_role=os.environ.get("NETBROKER_ISE_DEFAULT_ROLE", ""),
+            user_role_map=parse_user_role_map(os.environ.get("NETBROKER_ISE_USER_ROLE_MAP", "")),
+            profile_role_map=parse_user_role_map(os.environ.get("NETBROKER_ISE_PROFILE_ROLE_MAP", "")),
+            sgt_role_map=parse_user_role_map(os.environ.get("NETBROKER_ISE_SGT_ROLE_MAP", "")),
+        )
+
+    def authorize(self, user: AuthenticatedUser) -> AuthenticatedUser:
+        if not self.enabled:
+            return user
+
+        attributes = dict(user.attributes or {})
+        role = user.role
+
+        ise_profile = attributes.get("ise_profile") or attributes.get("profile") or ""
+        ise_sgt = attributes.get("ise_sgt") or attributes.get("sgt") or ""
+
+        if user.username in self.user_role_map:
+            role = self.user_role_map[user.username]
+        elif ise_profile in self.profile_role_map:
+            role = self.profile_role_map[ise_profile]
+        elif ise_sgt in self.sgt_role_map:
+            role = self.sgt_role_map[ise_sgt]
+        elif self.default_role:
+            role = self.default_role
+
+        attributes["ise_authorized"] = "true"
+        return AuthenticatedUser(username=user.username, role=role, attributes=attributes)
 
 
 class AuthService:
-    def __init__(self, provider, sessions: SessionManager | None = None) -> None:
+    def __init__(self, provider, sessions: SessionManager | None = None, authorization_policy: IseAuthorizationPolicy | None = None) -> None:
         self.provider = provider
         self.sessions = sessions or SessionManager()
+        self.authorization_policy = authorization_policy or IseAuthorizationPolicy.from_environment()
 
     @classmethod
     def from_environment(cls) -> "AuthService":
@@ -249,14 +301,19 @@ class AuthService:
             provider = TacacsAuthProvider.from_environment()
         else:
             provider = LocalAuthProvider.from_environment()
-        return cls(provider)
+        return cls(provider, authorization_policy=IseAuthorizationPolicy.from_environment())
 
     @property
     def provider_name(self) -> str:
+        if self.authorization_policy.enabled:
+            return f"{self.provider.name}+ise"
         return self.provider.name
 
     def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
-        return self.provider.authenticate(username, password)
+        user = self.provider.authenticate(username, password)
+        if not user:
+            return None
+        return self.authorization_policy.authorize(user)
 
     def create_session(self, user: AuthenticatedUser) -> str:
         return self.sessions.create_session(user)

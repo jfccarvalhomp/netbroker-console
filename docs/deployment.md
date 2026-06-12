@@ -89,6 +89,26 @@ sudo NETBROKER_TACACS_HOST="10.0.0.10" \
 
 TACACS+ currently authenticates the username/password and maps users to RBAC roles through `NETBROKER_TACACS_USER_ROLE_MAP`.
 
+## Cisco ISE Authorization
+
+ISE authorization can be enabled after local, LDAP, or TACACS+ authentication. It maps users, ISE authorization profiles, or SGT values to NetBroker RBAC roles.
+
+Interactive helper:
+
+```bash
+bash scripts/configure-ise-ubuntu.sh
+```
+
+Direct setup:
+
+```bash
+sudo NETBROKER_ISE_DEFAULT_ROLE="readonly" \
+  NETBROKER_ISE_USER_ROLE_MAP="admin=admin;operador=noc;auditor=auditor" \
+  NETBROKER_ISE_PROFILE_ROLE_MAP="NetBroker-Admin=admin;NetBroker-NOC=noc;NetBroker-Auditor=auditor" \
+  NETBROKER_ISE_SGT_ROLE_MAP="16=admin;17=noc;18=auditor;19=readonly" \
+  bash scripts/setup-ise-ubuntu.sh
+```
+
 ## Web Access
 
 ```text

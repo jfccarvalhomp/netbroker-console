@@ -59,3 +59,9 @@
 - Added optional TACACS+ authentication provider.
 - Added TACACS+ user-to-RBAC role mapping through environment configuration.
 - Added Ubuntu setup and interactive configuration scripts for TACACS+.
+
+## 0.10.0 - 2026-06-12
+
+- Added optional Cisco ISE authorization policy layer.
+- Added user, authorization profile, and SGT to RBAC mapping for ISE-oriented deployments.
+- Added Ubuntu setup and interactive configuration scripts for ISE authorization.

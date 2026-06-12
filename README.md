@@ -30,6 +30,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Broker opcional RabbitMQ: `scripts/setup-rabbitmq-ubuntu.sh`
 - Autenticacao opcional LDAP/AD: `scripts/setup-ldap-ubuntu.sh`
 - Autenticacao opcional TACACS+: `scripts/setup-tacacs-ubuntu.sh`
+- Autorizacao opcional Cisco ISE: `scripts/setup-ise-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -175,6 +176,34 @@ Variaveis principais:
 - `NETBROKER_TACACS_TIMEOUT`
 - `NETBROKER_TACACS_DEFAULT_ROLE`
 - `NETBROKER_TACACS_USER_ROLE_MAP`
+
+## Habilitar Cisco ISE para autorizacao
+
+O ISE entra como camada de autorizacao depois do login local, LDAP ou TACACS+. Ele ajusta o papel RBAC final com base em usuario, perfil ISE ou SGT.
+
+Modo interativo recomendado:
+
+```bash
+bash scripts/configure-ise-ubuntu.sh
+```
+
+Modo direto:
+
+```bash
+sudo NETBROKER_ISE_DEFAULT_ROLE="readonly" \
+  NETBROKER_ISE_USER_ROLE_MAP="admin=admin;operador=noc;auditor=auditor" \
+  NETBROKER_ISE_PROFILE_ROLE_MAP="NetBroker-Admin=admin;NetBroker-NOC=noc;NetBroker-Auditor=auditor" \
+  NETBROKER_ISE_SGT_ROLE_MAP="16=admin;17=noc;18=auditor;19=readonly" \
+  bash scripts/setup-ise-ubuntu.sh
+```
+
+Variaveis principais:
+
+- `NETBROKER_ISE_ENABLED=true`
+- `NETBROKER_ISE_DEFAULT_ROLE`
+- `NETBROKER_ISE_USER_ROLE_MAP`
+- `NETBROKER_ISE_PROFILE_ROLE_MAP`
+- `NETBROKER_ISE_SGT_ROLE_MAP`
 
 ## Executar manualmente
 
