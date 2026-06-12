@@ -92,12 +92,33 @@ class PostgresStateRepository:
                     cur.execute("select event_time, message from events order by position")
                     events = [[event_time, message] for event_time, message in cur.fetchall()]
 
+                    cur.execute(
+                        """
+                        select occurred_at, actor, role, action, status, details
+                        from audit_logs
+                        order by id desc
+                        limit 200
+                        """
+                    )
+                    audit = [
+                        {
+                            "time": occurred_at,
+                            "actor": actor,
+                            "role": role,
+                            "action": action,
+                            "status": status,
+                            "details": details,
+                        }
+                        for occurred_at, actor, role, action, status, details in cur.fetchall()
+                    ]
+
             return {
                 "queueDepth": queue_depth,
                 "devices": devices,
                 "alarms": alarms,
                 "jobs": jobs,
                 "events": events,
+                "audit": audit,
             }
 
     def update(self, mutator) -> dict:
@@ -164,6 +185,19 @@ class PostgresStateRepository:
                     )
                     """
                 )
+                cur.execute(
+                    """
+                    create table if not exists audit_logs (
+                      id bigserial primary key,
+                      occurred_at text not null,
+                      actor text not null,
+                      role text not null,
+                      action text not null,
+                      status text not null,
+                      details text not null
+                    )
+                    """
+                )
 
     def _has_state(self) -> bool:
         with self._connect() as conn:
@@ -175,6 +209,7 @@ class PostgresStateRepository:
         with self._connect() as conn:
             with conn.cursor() as cur:
                 cur.execute("delete from events")
+                cur.execute("delete from audit_logs")
                 cur.execute("delete from jobs")
                 cur.execute("delete from alarms")
                 cur.execute("delete from devices")
@@ -219,4 +254,21 @@ class PostgresStateRepository:
                     cur.execute(
                         "insert into events (position, event_time, message) values (%s, %s, %s)",
                         (position, event[0], event[1]),
+                    )
+
+                existing_audit = state.get("audit", [])[:200]
+                for item in reversed(existing_audit):
+                    cur.execute(
+                        """
+                        insert into audit_logs (occurred_at, actor, role, action, status, details)
+                        values (%s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            item.get("time", ""),
+                            item.get("actor", "system"),
+                            item.get("role", "system"),
+                            item.get("action", "unknown"),
+                            item.get("status", "unknown"),
+                            item.get("details", ""),
+                        ),
                     )

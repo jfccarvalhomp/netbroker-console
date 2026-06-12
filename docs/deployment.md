@@ -85,6 +85,7 @@ curl -c /tmp/netbroker.cookies \
   http://127.0.0.1:8080/api/auth/login
 curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/state
 curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/adapters
+curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/audit
 curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/metrics
 ```
 

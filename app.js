@@ -27,7 +27,8 @@ const fallbackState = {
     ["10:43", "Cisco Adapter converteu interfaces para modelo canonico"],
     ["10:44", "Monitoring Service correlacionou alarme de CPU no FW-DC-EDGE-01"],
     ["10:45", "OpenTelemetry fechou trace distribuido do job inventory.sync"]
-  ]
+  ],
+  audit: []
 };
 
 const diagrams = [
@@ -41,7 +42,8 @@ const titles = {
   alarms: "NOC e alarmes",
   automation: "Automacao e integracao",
   architecture: "Arquitetura proposta",
-  security: "Seguranca e governanca"
+  security: "Seguranca e governanca",
+  audit: "Auditoria de acoes"
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -92,6 +94,7 @@ function bindEvents() {
   $("#discoverDevices").addEventListener("click", discoverDevices);
   $("#ackAll").addEventListener("click", acknowledgeAlarms);
   $("#convertPayload").addEventListener("click", convertPayload);
+  $("#refreshAudit").addEventListener("click", loadAudit);
   $("#loginForm").addEventListener("submit", login);
   $("#logoutButton").addEventListener("click", logout);
 }
@@ -130,7 +133,8 @@ function normalizeState(data) {
     devices: data.devices ?? fallbackState.devices,
     alarms: data.alarms ?? fallbackState.alarms,
     jobs: data.jobs ?? fallbackState.jobs,
-    events: data.events ?? fallbackState.events
+    events: data.events ?? fallbackState.events,
+    audit: data.audit ?? fallbackState.audit
   };
 }
 
@@ -140,6 +144,7 @@ function renderAll() {
   renderDevices();
   renderAlarms();
   renderJobs();
+  renderAudit();
   $("#queueDepth").textContent = new Intl.NumberFormat("pt-BR").format(state.queueDepth);
   $("#brokerState").textContent = apiOnline ? "API + broker operacional" : "Modo estatico local";
   renderAuth();
@@ -292,6 +297,38 @@ function renderJobs() {
   $$("[data-run-job]").forEach((button) => {
     button.addEventListener("click", () => runJob(button.dataset.runJob));
   });
+}
+
+function renderAudit() {
+  const rows = state.audit || [];
+  $("#auditTable").innerHTML = rows.map((item) => `
+    <tr>
+      <td>${formatAuditTime(item.time)}</td>
+      <td>${item.actor}</td>
+      <td>${item.role}</td>
+      <td>${item.action}</td>
+      <td><span class="status ${item.status === "success" ? "ok" : "bad"}">${item.status}</span></td>
+      <td>${item.details || ""}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadAudit() {
+  try {
+    const data = await apiGet("/api/audit?limit=100");
+    state.audit = data.audit || [];
+    renderAudit();
+    toast("Auditoria atualizada.");
+  } catch (error) {
+    toast(error.status === 403 ? "Seu perfil nao permite consultar auditoria." : "Falha ao carregar auditoria.");
+  }
+}
+
+function formatAuditTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("pt-BR");
 }
 
 function renderDiagrams() {

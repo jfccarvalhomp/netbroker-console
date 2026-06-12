@@ -47,3 +47,9 @@
 ## 0.7.1 - 2026-06-12
 
 - Added an interactive LDAP configuration helper to avoid typing long environment-variable commands manually.
+
+## 0.8.0 - 2026-06-12
+
+- Added action auditing for authentication, authorization failures, operational jobs, alarm acknowledgements, telemetry simulation, payload conversion, and worker processing.
+- Added `/api/audit` protected by the auditor RBAC level.
+- Added an audit view to the web console.

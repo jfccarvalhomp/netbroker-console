@@ -34,17 +34,40 @@ class NetBrokerService:
     def list_adapters(self) -> dict:
         return {"adapters": self.adapters.describe()}
 
-    def acknowledge_alarms(self, ids: list[int]) -> dict:
+    def list_audit(self, limit: int = 100) -> dict:
+        state = self.repository.read()
+        return {"audit": state.get("audit", [])[:limit]}
+
+    def record_audit(self, actor: str, role: str, action: str, status: str, details: str = "") -> None:
+        def write(state: dict) -> None:
+            state.setdefault("audit", [])
+            state["audit"].insert(
+                0,
+                {
+                    "time": iso_now(),
+                    "actor": actor or "anonymous",
+                    "role": role or "none",
+                    "action": action,
+                    "status": status,
+                    "details": details,
+                },
+            )
+            state["audit"] = state["audit"][:200]
+
+        self.repository.update(write)
+
+    def acknowledge_alarms(self, ids: list[int], actor: str = "system", role: str = "system") -> dict:
         selected = {int(item) for item in ids}
 
         def ack(state: dict) -> None:
             state["alarms"] = [alarm for alarm in state["alarms"] if int(alarm["id"]) not in selected]
             state["events"].insert(0, [now_label(), f"{len(selected)} alarme(s) reconhecido(s) pelo NOC"])
             state["events"] = state["events"][:8]
+            append_audit(state, actor, role, "alarms.ack", "success", f"ids={sorted(selected)}")
 
         return self.repository.update(ack)
 
-    def run_job(self, queue: str) -> dict:
+    def run_job(self, queue: str, actor: str = "system", role: str = "system") -> dict:
         command_queue = str(queue or "job.manual")
         message = None
         if self.broker is not None:
@@ -55,10 +78,11 @@ class NetBrokerService:
             suffix = " via RabbitMQ" if message and getattr(self.broker, "name", "") == "rabbitmq" else ""
             state["events"].insert(0, [now_label(), f"Comando publicado em {command_queue}{suffix}"])
             state["events"] = state["events"][:8]
+            append_audit(state, actor, role, "jobs.run", "success", f"queue={command_queue}")
 
         return self.repository.update(run)
 
-    def simulate_telemetry(self) -> dict:
+    def simulate_telemetry(self, actor: str = "system", role: str = "system") -> dict:
         def tick(state: dict) -> None:
             for device in state["devices"]:
                 if device["status"] != "DOWN":
@@ -67,11 +91,14 @@ class NetBrokerService:
             state["queueDepth"] = int(state.get("queueDepth", 0)) + random.randint(30, 150)
             state["events"].insert(0, [now_label(), "Telemetria coletada e normalizada pelos adaptadores"])
             state["events"] = state["events"][:8]
+            append_audit(state, actor, role, "telemetry.simulate", "success", "manual simulation")
 
         return self.repository.update(tick)
 
-    def convert_payload(self, payload: dict) -> dict:
-        return canonicalize_vendor_payload(payload)
+    def convert_payload(self, payload: dict, actor: str = "system", role: str = "system") -> dict:
+        result = canonicalize_vendor_payload(payload)
+        self.record_audit(actor, role, "payload.convert", "success", f"vendor={result.get('vendor')}")
+        return result
 
     def metrics(self) -> str:
         state = self.repository.read()
@@ -89,3 +116,19 @@ class NetBrokerService:
             "",
         ]
         return "\n".join(lines)
+
+
+def append_audit(state: dict, actor: str, role: str, action: str, status: str, details: str = "") -> None:
+    state.setdefault("audit", [])
+    state["audit"].insert(
+        0,
+        {
+            "time": iso_now(),
+            "actor": actor or "anonymous",
+            "role": role or "none",
+            "action": action,
+            "status": status,
+            "details": details,
+        },
+    )
+    state["audit"] = state["audit"][:200]

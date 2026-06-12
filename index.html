@@ -42,6 +42,7 @@
           <a class="nav-link" href="#automation" data-view="automation">Automacao</a>
           <a class="nav-link" href="#architecture" data-view="architecture">Arquitetura</a>
           <a class="nav-link" href="#security" data-view="security">Seguranca</a>
+          <a class="nav-link" href="#audit" data-view="audit">Auditoria</a>
         </nav>
 
         <section class="side-panel">
@@ -284,6 +285,33 @@
               <p>Login, mudancas de configuracao, criacao de usuarios e automacoes ficam registrados.</p>
             </article>
           </div>
+        </section>
+
+        <section class="view" id="audit">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="label">Auditoria</span>
+                <h2>Acoes registradas</h2>
+              </div>
+              <button class="ghost-button" id="refreshAudit" type="button">Atualizar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Horario</th>
+                    <th>Ator</th>
+                    <th>Papel</th>
+                    <th>Acao</th>
+                    <th>Status</th>
+                    <th>Detalhes</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTable"></tbody>
+              </table>
+            </div>
+          </section>
         </section>
       </main>
     </div>

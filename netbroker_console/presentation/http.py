@@ -61,6 +61,17 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             self.send_json(self.server.service.list_adapters())
             return
 
+        if parsed.path == "/api/audit":
+            if not self.require_role("auditor"):
+                return
+            query = parse_qs(parsed.query)
+            try:
+                limit = int((query.get("limit") or ["100"])[0])
+            except ValueError:
+                limit = 100
+            self.send_json(self.server.service.list_audit(limit))
+            return
+
         if parsed.path == "/metrics":
             if not self.require_role("auditor"):
                 return
@@ -76,9 +87,11 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/auth/login":
             user = self.server.auth.authenticate(str(body.get("username", "")), str(body.get("password", "")))
             if not user:
+                self.server.service.record_audit(str(body.get("username", "")), "none", "auth.login", "failure", "invalid credentials")
                 self.send_json({"error": "invalid_credentials"}, HTTPStatus.UNAUTHORIZED)
                 return
             token = self.server.auth.create_session(user)
+            self.server.service.record_audit(user.username, user.role, "auth.login", "success", f"provider={self.server.auth.provider_name}")
             self.send_json(
                 {"authenticated": True, "username": user.username, "role": user.role, "provider": self.server.auth.provider_name},
                 headers=[session_cookie(token)],
@@ -86,6 +99,9 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/auth/logout":
+            user = self.current_user()
+            if user:
+                self.server.service.record_audit(user.username, user.role, "auth.logout", "success", "session destroyed")
             self.server.auth.destroy_session(self.session_token())
             self.send_json({"authenticated": False}, headers=[clear_session_cookie()])
             return
@@ -94,25 +110,29 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             if not self.require_role("noc"):
                 return
             ids = [int(item) for item in body.get("ids", []) if str(item).isdigit()]
-            self.send_json(self.server.service.acknowledge_alarms(ids))
+            user = self.current_user()
+            self.send_json(self.server.service.acknowledge_alarms(ids, user.username, user.role))
             return
 
         if parsed.path == "/api/jobs/run":
             if not self.require_role("noc"):
                 return
-            self.send_json(self.server.service.run_job(str(body.get("queue") or "job.manual")))
+            user = self.current_user()
+            self.send_json(self.server.service.run_job(str(body.get("queue") or "job.manual"), user.username, user.role))
             return
 
         if parsed.path == "/api/telemetry/simulate":
             if not self.require_role("noc"):
                 return
-            self.send_json(self.server.service.simulate_telemetry())
+            user = self.current_user()
+            self.send_json(self.server.service.simulate_telemetry(user.username, user.role))
             return
 
         if parsed.path == "/api/convert":
             if not self.require_role("readonly"):
                 return
-            self.send_json(self.server.service.convert_payload(body))
+            user = self.current_user()
+            self.send_json(self.server.service.convert_payload(body, user.username, user.role))
             return
 
         self.send_error(HTTPStatus.NOT_FOUND, "API route not found")
@@ -146,9 +166,11 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
     def require_role(self, role: str) -> bool:
         user = self.current_user()
         if not user:
+            self.server.service.record_audit("anonymous", "none", f"access.{self.command.lower()}", "denied", f"path={self.path};required={role}")
             self.send_json({"error": "authentication_required"}, HTTPStatus.UNAUTHORIZED)
             return False
         if not self.server.auth.can(user, role):
+            self.server.service.record_audit(user.username, user.role, f"access.{self.command.lower()}", "forbidden", f"path={self.path};required={role}")
             self.send_json({"error": "forbidden", "requiredRole": role}, HTTPStatus.FORBIDDEN)
             return False
         return True

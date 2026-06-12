@@ -10,6 +10,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Inventario canonico de dispositivos multivendor.
 - Fila de alarmes com reconhecimento auditavel.
 - Jobs de automacao simulando publicacao em broker.
+- Auditoria de login, logout, acesso negado e acoes operacionais.
 - Registro de adaptadores Cisco, Fortinet, Aruba, Juniper, Huawei e Mikrotik.
 - Conversor de payload de fabricante para modelo canonico.
 - Galeria de diagramas arquiteturais extraidos do trabalho.
@@ -188,6 +189,7 @@ http://127.0.0.1:4190/
 - `GET /api/devices?vendor=Cisco&q=core`
 - `GET /api/alarms`
 - `GET /api/adapters`
+- `GET /api/audit?limit=100`
 - `POST /api/alarms/ack`
 - `POST /api/jobs/run`
 - `POST /api/telemetry/simulate`

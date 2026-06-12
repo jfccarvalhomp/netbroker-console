@@ -10,6 +10,7 @@ import socket
 from pathlib import Path
 
 from netbroker_console.domain.canonical import now_label
+from netbroker_console.application.services import append_audit
 from netbroker_console.infrastructure.adapters import AdapterRegistry
 from netbroker_console.infrastructure.persistence import JsonStateRepository, PostgresStateRepository
 
@@ -42,6 +43,14 @@ def record_processed(repository, registry: AdapterRegistry, queue: str, payload:
     def update(state: dict) -> None:
         for result in reversed(results):
             state["events"].insert(0, [now_label(), f"{result.message} via RabbitMQ"])
+            append_audit(
+                state,
+                "netbroker-worker",
+                "system",
+                "broker.command.process",
+                "success",
+                f"queue={queue};adapter={result.adapter};vendor={result.vendor}",
+            )
 
             if result.discovered_device:
                 known_hosts = {device["host"] for device in state["devices"]}

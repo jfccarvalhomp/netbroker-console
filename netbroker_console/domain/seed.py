@@ -31,5 +31,5 @@ INITIAL_STATE = {
         ["10:44", "Monitoring Service correlacionou alarme de CPU no FW-DC-EDGE-01"],
         ["10:45", "OpenTelemetry fechou trace distribuido do job inventory.sync"],
     ],
+    "audit": [],
 }
-
