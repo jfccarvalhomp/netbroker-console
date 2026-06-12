@@ -69,6 +69,26 @@ sudo NETBROKER_LDAP_URI="ldap://ad.example.local:389" \
 
 The application maps LDAP `memberOf` DNs to RBAC roles through `NETBROKER_LDAP_GROUP_ROLE_MAP`.
 
+## TACACS+ Authentication
+
+Interactive helper:
+
+```bash
+bash scripts/configure-tacacs-ubuntu.sh
+```
+
+Direct setup:
+
+```bash
+sudo NETBROKER_TACACS_HOST="10.0.0.10" \
+  NETBROKER_TACACS_SECRET="shared-secret" \
+  NETBROKER_TACACS_DEFAULT_ROLE="readonly" \
+  NETBROKER_TACACS_USER_ROLE_MAP="admin=admin;operador=noc;auditor=auditor" \
+  bash scripts/setup-tacacs-ubuntu.sh
+```
+
+TACACS+ currently authenticates the username/password and maps users to RBAC roles through `NETBROKER_TACACS_USER_ROLE_MAP`.
+
 ## Web Access
 
 ```text

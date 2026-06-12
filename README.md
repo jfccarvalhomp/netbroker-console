@@ -29,6 +29,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Persistencia opcional em PostgreSQL: `scripts/setup-postgres-ubuntu.sh`
 - Broker opcional RabbitMQ: `scripts/setup-rabbitmq-ubuntu.sh`
 - Autenticacao opcional LDAP/AD: `scripts/setup-ldap-ubuntu.sh`
+- Autenticacao opcional TACACS+: `scripts/setup-tacacs-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -146,6 +147,34 @@ Variaveis principais:
 - `NETBROKER_LDAP_USER_FILTER`
 - `NETBROKER_LDAP_DEFAULT_ROLE`
 - `NETBROKER_LDAP_GROUP_ROLE_MAP`
+
+## Habilitar TACACS+
+
+Modo interativo recomendado:
+
+```bash
+bash scripts/configure-tacacs-ubuntu.sh
+```
+
+Modo direto:
+
+```bash
+sudo NETBROKER_TACACS_HOST="10.0.0.10" \
+  NETBROKER_TACACS_SECRET="SEGREDO_TACACS" \
+  NETBROKER_TACACS_DEFAULT_ROLE="readonly" \
+  NETBROKER_TACACS_USER_ROLE_MAP="admin=admin;operador=noc;auditor=auditor" \
+  bash scripts/setup-tacacs-ubuntu.sh
+```
+
+Variaveis principais:
+
+- `NETBROKER_AUTH_PROVIDER=tacacs`
+- `NETBROKER_TACACS_HOST`
+- `NETBROKER_TACACS_SECRET`
+- `NETBROKER_TACACS_PORT`
+- `NETBROKER_TACACS_TIMEOUT`
+- `NETBROKER_TACACS_DEFAULT_ROLE`
+- `NETBROKER_TACACS_USER_ROLE_MAP`
 
 ## Executar manualmente
 

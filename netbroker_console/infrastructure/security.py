@@ -177,6 +177,64 @@ class LdapAuthProvider:
         return connection
 
 
+class TacacsAuthProvider:
+    name = "tacacs"
+
+    def __init__(
+        self,
+        host: str,
+        secret: str,
+        port: int,
+        timeout: int,
+        default_role: str,
+        user_role_map: dict[str, str],
+    ) -> None:
+        if not host or not secret:
+            raise ValueError("TACACS+ requires NETBROKER_TACACS_HOST and NETBROKER_TACACS_SECRET")
+        try:
+            from tacacs_plus.client import TACACSClient
+            from tacacs_plus.flags import TAC_PLUS_AUTHEN_TYPE_ASCII
+        except ImportError as exc:
+            raise RuntimeError("Install tacacs_plus to use TACACS+ authentication") from exc
+
+        self.client_class = TACACSClient
+        self.auth_type = TAC_PLUS_AUTHEN_TYPE_ASCII
+        self.host = host
+        self.secret = secret
+        self.port = port
+        self.timeout = timeout
+        self.default_role = default_role
+        self.user_role_map = user_role_map
+
+    @classmethod
+    def from_environment(cls) -> "TacacsAuthProvider":
+        return cls(
+            host=os.environ.get("NETBROKER_TACACS_HOST", ""),
+            secret=os.environ.get("NETBROKER_TACACS_SECRET", ""),
+            port=int(os.environ.get("NETBROKER_TACACS_PORT", "49")),
+            timeout=int(os.environ.get("NETBROKER_TACACS_TIMEOUT", "5")),
+            default_role=os.environ.get("NETBROKER_TACACS_DEFAULT_ROLE", "readonly"),
+            user_role_map=parse_user_role_map(os.environ.get("NETBROKER_TACACS_USER_ROLE_MAP", "")),
+        )
+
+    def authenticate(self, username: str, password: str) -> AuthenticatedUser | None:
+        if not username or not password:
+            return None
+
+        client = self.client_class(
+            self.host,
+            self.port,
+            self.secret,
+            timeout=self.timeout,
+        )
+        response = client.authenticate(username, password, authen_type=self.auth_type)
+        if not getattr(response, "valid", False):
+            return None
+
+        role = self.user_role_map.get(username, self.default_role)
+        return AuthenticatedUser(username=username, role=role)
+
+
 class AuthService:
     def __init__(self, provider, sessions: SessionManager | None = None) -> None:
         self.provider = provider
@@ -187,6 +245,8 @@ class AuthService:
         provider_name = os.environ.get("NETBROKER_AUTH_PROVIDER", "local")
         if provider_name == "ldap":
             provider = LdapAuthProvider.from_environment()
+        elif provider_name == "tacacs":
+            provider = TacacsAuthProvider.from_environment()
         else:
             provider = LocalAuthProvider.from_environment()
         return cls(provider)
@@ -217,6 +277,15 @@ def parse_group_role_map(raw: str) -> dict[str, str]:
         group_dn, separator, role = item.rpartition("=")
         if separator and group_dn.strip() and role.strip():
             mapping[group_dn.strip()] = role.strip()
+    return mapping
+
+
+def parse_user_role_map(raw: str) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for item in raw.split(";"):
+        username, separator, role = item.partition("=")
+        if separator and username.strip() and role.strip():
+            mapping[username.strip()] = role.strip()
     return mapping
 
 

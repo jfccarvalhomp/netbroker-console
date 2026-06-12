@@ -53,3 +53,9 @@
 - Added action auditing for authentication, authorization failures, operational jobs, alarm acknowledgements, telemetry simulation, payload conversion, and worker processing.
 - Added `/api/audit` protected by the auditor RBAC level.
 - Added an audit view to the web console.
+
+## 0.9.0 - 2026-06-12
+
+- Added optional TACACS+ authentication provider.
+- Added TACACS+ user-to-RBAC role mapping through environment configuration.
+- Added Ubuntu setup and interactive configuration scripts for TACACS+.
