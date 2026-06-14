@@ -35,6 +35,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Autorizacao opcional Cisco ISE: `scripts/setup-ise-ubuntu.sh`
 - Observabilidade externa opcional: `scripts/setup-observability-ubuntu.sh`
 - Proxy reverso Nginx/TLS opcional: `scripts/setup-nginx-ubuntu.sh`
+- Diagnostico de publicacao/DNS/TLS: `scripts/check-publication-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -117,6 +118,22 @@ sudo NETBROKER_SERVER_NAME="netbroker.example.com" \
 ```
 
 O script instala Nginx, cria `/etc/nginx/sites-available/netbroker-console`, aplica headers de seguranca, reinicia `netbroker-console` e recarrega o Nginx. Se `ufw` estiver instalado, libera o perfil `Nginx Full`.
+
+Antes de tentar TLS, valide DNS, Nginx, backend local e acesso publico:
+
+```bash
+bash scripts/check-publication-ubuntu.sh jfc.com.br
+```
+
+Se o script indicar que nao existe registro `A`, crie no provedor DNS:
+
+```text
+Tipo: A
+Nome: @
+Valor: IP_PUBLICO_DO_SERVIDOR
+```
+
+Depois repita o diagnostico e rode o setup com TLS somente quando o dominio responder pela porta 80.
 
 ## Observabilidade
 

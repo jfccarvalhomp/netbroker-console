@@ -84,3 +84,8 @@
 - Added Ubuntu Nginx reverse-proxy setup script for production web exposure.
 - Added optional Let's Encrypt TLS automation through Certbot.
 - Added HTTP security headers and localhost backend binding guidance.
+
+## 0.13.1 - 2026-06-14
+
+- Added publication diagnostic script for DNS, public HTTP, Nginx, and local health checks.
+- Documented DNS validation before running Certbot/Let's Encrypt.
