@@ -36,6 +36,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Observabilidade externa opcional: `scripts/setup-observability-ubuntu.sh`
 - Proxy reverso Nginx/TLS opcional: `scripts/setup-nginx-ubuntu.sh`
 - Diagnostico de publicacao/DNS/TLS: `scripts/check-publication-ubuntu.sh`
+- Backup e restore operacional: `scripts/backup-ubuntu.sh` e `scripts/restore-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -93,6 +94,37 @@ sudo systemctl status netbroker-console
 sudo journalctl -u netbroker-console -f
 sudo systemctl restart netbroker-console
 ```
+
+## Backup e Restore
+
+Para criar um backup operacional do NetBroker Console:
+
+```bash
+sudo bash scripts/backup-ubuntu.sh
+```
+
+O arquivo sera salvo em:
+
+```text
+/var/backups/netbroker-console/
+```
+
+O backup inclui:
+
+- `/etc/netbroker-console.env`
+- `/opt/netbroker-console/data`
+- configuracao Nginx do NetBroker, quando existir
+- configuracao Prometheus, quando existir
+- dump PostgreSQL, quando `NETBROKER_STORE=postgres`
+
+Para restaurar:
+
+```bash
+sudo bash scripts/restore-ubuntu.sh /var/backups/netbroker-console/netbroker-console-YYYYMMDD-HHMMSS.tar.gz
+sudo systemctl status netbroker-console
+```
+
+Em um servidor novo, instale a aplicacao primeiro com `scripts/install-ubuntu.sh`, configure PostgreSQL se o backup usar PostgreSQL, e depois execute o restore.
 
 ## Publicar com Nginx
 

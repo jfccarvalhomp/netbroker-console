@@ -89,3 +89,9 @@
 
 - Added publication diagnostic script for DNS, public HTTP, Nginx, and local health checks.
 - Documented DNS validation before running Certbot/Let's Encrypt.
+
+## 0.14.0 - 2026-06-14
+
+- Added Ubuntu backup script for runtime data, environment, Nginx, Prometheus, and optional PostgreSQL dump.
+- Added Ubuntu restore script for operational recovery on an existing or rebuilt server.
+- Documented backup and restore workflow.
