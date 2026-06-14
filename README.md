@@ -34,6 +34,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Autenticacao opcional TACACS+: `scripts/setup-tacacs-ubuntu.sh`
 - Autorizacao opcional Cisco ISE: `scripts/setup-ise-ubuntu.sh`
 - Observabilidade externa opcional: `scripts/setup-observability-ubuntu.sh`
+- Proxy reverso Nginx/TLS opcional: `scripts/setup-nginx-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -91,6 +92,31 @@ sudo systemctl status netbroker-console
 sudo journalctl -u netbroker-console -f
 sudo systemctl restart netbroker-console
 ```
+
+## Publicar com Nginx
+
+Para expor o frontend web em HTTP pela porta 80 e manter o backend Python ouvindo apenas em `127.0.0.1:8080`:
+
+```bash
+sudo bash scripts/setup-nginx-ubuntu.sh
+```
+
+Depois acesse:
+
+```text
+http://IP_DO_SERVIDOR/
+```
+
+Com dominio e TLS via Let's Encrypt:
+
+```bash
+sudo NETBROKER_SERVER_NAME="netbroker.example.com" \
+  NETBROKER_ENABLE_TLS="true" \
+  NETBROKER_TLS_EMAIL="admin@example.com" \
+  bash scripts/setup-nginx-ubuntu.sh
+```
+
+O script instala Nginx, cria `/etc/nginx/sites-available/netbroker-console`, aplica headers de seguranca, reinicia `netbroker-console` e recarrega o Nginx. Se `ufw` estiver instalado, libera o perfil `Nginx Full`.
 
 ## Observabilidade
 

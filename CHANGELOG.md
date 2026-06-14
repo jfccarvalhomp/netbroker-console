@@ -78,3 +78,9 @@
 - Added optional bearer-token access for Prometheus scraping of `/metrics`.
 - Added Ubuntu setup script for Prometheus target configuration.
 - Added importable Grafana dashboard JSON for NetBroker metrics.
+
+## 0.13.0 - 2026-06-14
+
+- Added Ubuntu Nginx reverse-proxy setup script for production web exposure.
+- Added optional Let's Encrypt TLS automation through Certbot.
+- Added HTTP security headers and localhost backend binding guidance.
