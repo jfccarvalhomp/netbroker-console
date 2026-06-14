@@ -95,3 +95,9 @@
 - Added Ubuntu backup script for runtime data, environment, Nginx, Prometheus, and optional PostgreSQL dump.
 - Added Ubuntu restore script for operational recovery on an existing or rebuilt server.
 - Documented backup and restore workflow.
+
+## 0.15.0 - 2026-06-14
+
+- Added GitHub Actions CI for Python compilation, shell syntax, Grafana dashboard JSON, and web asset checks.
+- Added local validation script that mirrors the CI checks.
+- Documented validation workflow before server deployment.

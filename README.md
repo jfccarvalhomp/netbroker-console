@@ -37,6 +37,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Proxy reverso Nginx/TLS opcional: `scripts/setup-nginx-ubuntu.sh`
 - Diagnostico de publicacao/DNS/TLS: `scripts/check-publication-ubuntu.sh`
 - Backup e restore operacional: `scripts/backup-ubuntu.sh` e `scripts/restore-ubuntu.sh`
+- Validacao local e CI: `scripts/validate-local.sh` e GitHub Actions.
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -94,6 +95,16 @@ sudo systemctl status netbroker-console
 sudo journalctl -u netbroker-console -f
 sudo systemctl restart netbroker-console
 ```
+
+## Validacao
+
+Antes de publicar uma alteracao no servidor, rode:
+
+```bash
+bash scripts/validate-local.sh
+```
+
+O script compila os modulos Python, valida a sintaxe dos scripts Bash, valida o JSON do dashboard Grafana e confere os arquivos web essenciais. O mesmo conjunto de verificacoes roda automaticamente no GitHub Actions a cada push e pull request.
 
 ## Backup e Restore
 
