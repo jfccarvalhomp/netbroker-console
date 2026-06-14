@@ -16,6 +16,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Conversor de payload de fabricante para modelo canonico.
 - Galeria de diagramas arquiteturais extraidos do trabalho.
 - Endpoint `/metrics` em formato compativel com Prometheus.
+- Script opcional para Prometheus e dashboard Grafana importavel.
 
 ## Arquitetura
 
@@ -32,6 +33,7 @@ O projeto entrega um frontend totalmente acessivel via web e um backend Python s
 - Autenticacao opcional LDAP/AD: `scripts/setup-ldap-ubuntu.sh`
 - Autenticacao opcional TACACS+: `scripts/setup-tacacs-ubuntu.sh`
 - Autorizacao opcional Cisco ISE: `scripts/setup-ise-ubuntu.sh`
+- Observabilidade externa opcional: `scripts/setup-observability-ubuntu.sh`
 - Instalador systemd: `scripts/install-ubuntu.sh`
 
 ## Instalar no Ubuntu Server
@@ -106,6 +108,35 @@ Exemplos no Ubuntu:
 curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/observability/traces
 curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/api/observability/logs
 curl -b /tmp/netbroker.cookies http://127.0.0.1:8080/metrics
+```
+
+Para Prometheus, configure um token de scrape e registre o target local:
+
+```bash
+sudo bash scripts/setup-observability-ubuntu.sh
+```
+
+Opcionalmente, informe um token e alvo explicitamente:
+
+```bash
+sudo NETBROKER_METRICS_TOKEN="TOKEN_FORTE_AQUI" \
+  NETBROKER_PROMETHEUS_TARGET="127.0.0.1:8080" \
+  bash scripts/setup-observability-ubuntu.sh
+```
+
+O script instala e habilita Prometheus, grava `NETBROKER_METRICS_TOKEN` em `/etc/netbroker-console.env`, adiciona o job `netbroker-console` em `/etc/prometheus/prometheus.yml` e reinicia os servicos.
+
+Teste direto:
+
+```bash
+TOKEN="$(sudo grep '^NETBROKER_METRICS_TOKEN=' /etc/netbroker-console.env | cut -d= -f2-)"
+curl -H "Authorization: Bearer ${TOKEN}" http://127.0.0.1:8080/metrics
+```
+
+Para Grafana, importe o arquivo:
+
+```text
+monitoring/grafana-netbroker-dashboard.json
 ```
 
 ## Autenticacao local

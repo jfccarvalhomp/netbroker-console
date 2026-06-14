@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import sys
+from hmac import compare_digest
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -91,7 +93,7 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/metrics":
-            if not self.require_role("auditor"):
+            if not self.metrics_authorized(parsed.query):
                 return
             self.send_text(self.server.service.metrics(), "text/plain; version=0.0.4; charset=utf-8")
             return
@@ -194,6 +196,16 @@ class NetBrokerHandler(BaseHTTPRequestHandler):
             self.send_json({"error": "forbidden", "requiredRole": role}, HTTPStatus.FORBIDDEN)
             return False
         return True
+
+    def metrics_authorized(self, query: str) -> bool:
+        token = os.environ.get("NETBROKER_METRICS_TOKEN", "")
+        if token:
+            auth = self.headers.get("Authorization", "")
+            bearer = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
+            query_token = (parse_qs(query).get("token") or [""])[0]
+            if compare_digest(bearer, token) or compare_digest(query_token, token):
+                return True
+        return self.require_role("auditor")
 
     def session_token(self) -> str | None:
         cookie = self.headers.get("Cookie", "")

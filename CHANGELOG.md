@@ -72,3 +72,9 @@
 - Added `/api/observability/logs` and `/api/observability/traces`, protected by auditor RBAC.
 - Expanded `/metrics` with HTTP request, error, and latency metrics.
 - Added an Observability view to the web console.
+
+## 0.12.0 - 2026-06-14
+
+- Added optional bearer-token access for Prometheus scraping of `/metrics`.
+- Added Ubuntu setup script for Prometheus target configuration.
+- Added importable Grafana dashboard JSON for NetBroker metrics.
