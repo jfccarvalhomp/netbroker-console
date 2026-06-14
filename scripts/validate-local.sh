@@ -18,6 +18,7 @@ if [[ -z "${PYTHON_BIN}" ]]; then
 fi
 
 "${PYTHON_BIN}" -m compileall -q server.py worker.py netbroker_console
+"${PYTHON_BIN}" -m unittest discover -s tests -p 'test_*.py'
 
 shopt -s globstar nullglob
 BASH_BIN="${BASH:-bash}"

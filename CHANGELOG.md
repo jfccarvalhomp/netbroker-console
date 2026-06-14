@@ -101,3 +101,8 @@
 - Added GitHub Actions CI for Python compilation, shell syntax, Grafana dashboard JSON, and web asset checks.
 - Added local validation script that mirrors the CI checks.
 - Documented validation workflow before server deployment.
+
+## 0.16.0 - 2026-06-14
+
+- Added standard-library API tests for health, authentication, RBAC, operations, metrics token access, and observability traces.
+- Included the API test suite in local validation and GitHub Actions.

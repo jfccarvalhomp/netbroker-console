@@ -104,7 +104,7 @@ Antes de publicar uma alteracao no servidor, rode:
 bash scripts/validate-local.sh
 ```
 
-O script compila os modulos Python, valida a sintaxe dos scripts Bash, valida o JSON do dashboard Grafana e confere os arquivos web essenciais. O mesmo conjunto de verificacoes roda automaticamente no GitHub Actions a cada push e pull request.
+O script compila os modulos Python, executa testes automatizados de API, valida a sintaxe dos scripts Bash, valida o JSON do dashboard Grafana e confere os arquivos web essenciais. O mesmo conjunto de verificacoes roda automaticamente no GitHub Actions a cada push e pull request.
 
 ## Backup e Restore
 
